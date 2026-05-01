@@ -937,6 +937,40 @@ export default function Classificacao() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* NFs pendentes (export) */}
+        <Dialog
+          open={!!pendentes}
+          onOpenChange={(o) => { if (!o) { setPendentes(null); setTipoPendencia(null); } }}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {tipoPendencia === "ibge"
+                  ? "Há prestadores sem código IBGE"
+                  : "Há notas pendentes de classificação"}
+              </DialogTitle>
+              <DialogDescription>
+                {tipoPendencia === "ibge"
+                  ? "Re-importe a planilha ou edite os prestadores abaixo antes de exportar."
+                  : "Classifique as notas abaixo antes de exportar."}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="max-h-80 overflow-auto rounded-lg border bg-muted/20 p-3 space-y-1">
+              {(pendentes ?? []).map((p, i) => (
+                <p key={i} className="text-sm font-mono">{p}</p>
+              ))}
+            </div>
+            <DialogFooter>
+              <Button
+                onClick={() => { setPendentes(null); setTipoPendencia(null); }}
+                className="bg-brand text-brand-foreground hover:bg-brand/90"
+              >
+                Voltar à classificação
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </TooltipProvider>
   );
