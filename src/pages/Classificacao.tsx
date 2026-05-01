@@ -141,6 +141,9 @@ export default function Classificacao() {
   const [confirmConcluirOpen, setConfirmConcluirOpen] = useState(false);
   const [confirmReabrirOpen, setConfirmReabrirOpen] = useState(false);
   const [acaoLoading, setAcaoLoading] = useState(false);
+  const [exportandoLoading, setExportandoLoading] = useState(false);
+  const [pendentes, setPendentes] = useState<string[] | null>(null);
+  const [tipoPendencia, setTipoPendencia] = useState<"classificacao" | "ibge" | null>(null);
 
   // Debounce busca
   useEffect(() => {
