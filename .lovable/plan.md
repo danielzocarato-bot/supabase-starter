@@ -1,157 +1,31 @@
-# Correção do fluxo “Promover usuário a escritório”
+## O que confirmei
+- Hoje existe **1 perfil** no ambiente e ele ainda está como **`cliente`**.
+- Não há nenhum perfil com papel **`escritorio`** no banco neste momento.
+- A função de promoção existe, mas como o fluxo está instável, o jeito mais seguro para te destravar é **converter diretamente a sua conta atual no backend** e depois validar o redirecionamento.
 
-## Diagnóstico
+## Plano
+1. **Destravar sua conta imediatamente**
+   - Atualizar o seu perfil atual para `role = 'escritorio'`.
+   - Limpar `cliente_id` desse perfil, para ele ficar coerente com papel de escritório.
+   - Confirmar no banco que sua conta foi convertida com sucesso.
 
-O problema principal não parece estar no roteamento, e sim no fato de que a promoção não chegou a acontecer no backend.
+2. **Validar o acesso após a conversão**
+   - Garantir que, ao entrar novamente, você seja enviado para `/app/escritorio`.
+   - Verificar se o bloqueio por papel (`RequireRole`) passa a liberar as rotas de escritório normalmente.
 
-O que confirmei:
+3. **Checar o fluxo de bootstrap para não quebrar de novo**
+   - Revisar se o botão **“Promover usuário a escritório”** continua aparecendo apenas quando não existe escritório.
+   - Confirmar que o redirecionamento automático da tela de login não volta a empurrar um usuário recém-criado para `/app/cliente` antes da promoção.
+   - Se necessário, ajustar apenas o mínimo para estabilizar o fluxo sem mexer no restante da autenticação.
 
-- A tabela `profiles` ainda está com seu usuário como `role = 'cliente'`.
-- A função `promover_primeiro_escritorio` existe e hoje já está como `security definer` com `set search_path = public`.
-- O enum de roles contém `escritorio`, então não é erro de tipo.
-- Nas requests capturadas, **não houve chamada para** `rpc/promover_primeiro_escritorio`.
-- No replay, depois do login o botão **“Promover usuário a escritório”** apareceu, mas não há evidência de clique efetivo nem request saindo para a RPC.
+## Resultado esperado
+- Sua conta atual passa a ser **escritório**.
+- O login deixa de cair no painel de cliente.
+- O bootstrap inicial fica consistente até existir o primeiro escritório.
 
-Em resumo: o fluxo atual está frágil. Mesmo quando o botão aparece, falta instrumentação e endurecimento para garantir que:
+## Detalhes técnicos
+- Isso exige **atualização de dados existentes**, não mudança estrutural do banco.
+- Portanto, a correção principal é uma **mutação no perfil atual** e uma nova validação do fluxo.
+- Não pretendo habilitar cadastro público nem alterar a regra de segurança do bootstrap.
 
-1. o clique realmente dispara a RPC,
-2. o retorno bruto fique visível no console,
-3. só exista sucesso quando a linha for realmente atualizada,
-4. o app faça um recarregamento completo do profile após promoção.
-
-## O que vou corrigir
-
-### 1. Recriar a RPC com validação explícita de atualização real
-
-Vou substituir a função por esta versão final:
-
-```sql
-create or replace function public.promover_primeiro_escritorio(_user_id uuid)
-returns boolean
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  escritorio_count integer;
-  linhas_afetadas integer;
-begin
-  select count(*)
-    into escritorio_count
-  from public.profiles
-  where role = 'escritorio';
-
-  if escritorio_count > 0 then
-    return false;
-  end if;
-
-  update public.profiles
-     set role = 'escritorio',
-         cliente_id = null
-   where id = _user_id;
-
-  get diagnostics linhas_afetadas = row_count;
-
-  return linhas_afetadas = 1;
-end;
-$$;
-```
-
-Isso elimina falso positivo: ela só retorna `true` se realmente atualizou exatamente 1 profile.
-
-### 2. Corrigir o `handlePromover` no frontend
-
-Vou ajustar o handler para:
-
-- registrar `console.log` temporário com `{ data, error, userId }`,
-- mostrar erro quando `error` existir,
-- mostrar erro também quando `data === false`,
-- só recarregar se `data === true`,
-- usar `window.location.replace('/login')` em vez de `reload()`.
-
-Handler corrigido:
-
-```ts
-const handlePromover = async () => {
-  if (!user) {
-    toast.error("Faça login primeiro com a conta que deve virar escritório.");
-    return;
-  }
-
-  setLoading(true);
-
-  const { data, error } = await supabase.rpc("promover_primeiro_escritorio", {
-    _user_id: user.id,
-  });
-
-  console.log("[promover_primeiro_escritorio] resultado bruto", {
-    data,
-    error,
-    userId: user.id,
-  });
-
-  setLoading(false);
-
-  if (error || data === false) {
-    toast.error("Não foi possível promover. Verifique se já existe um escritório cadastrado.");
-    return;
-  }
-
-  if (data === true) {
-    toast.success("Conta criada com segurança. Agora promova-se a escritório.");
-    window.location.replace("/login");
-  }
-};
-```
-
-### 3. Forçar refetch limpo do profile no `AuthContext`
-
-Depois da promoção, vou reforçar o recarregamento completo do profile.
-
-No `AuthContext`, vou adicionar um log temporário no carregamento do profile para facilitar a validação no próximo teste:
-
-```ts
-const loadProfile = async (uid: string) => {
-  const { data } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", uid)
-    .maybeSingle();
-
-  console.log("[auth] profile carregado", { uid, data });
-  setProfile(data as Profile | null);
-};
-```
-
-O `replace()` já força uma reinicialização mais confiável do app e do contexto.
-
-### 4. Melhorar a verificabilidade do teste
-
-Depois da correção, no próximo teste você vai conseguir confirmar facilmente:
-
-- se a RPC foi chamada,
-- se retornou `true` ou `false`,
-- qual `userId` foi enviado,
-- e qual profile foi recarregado após o redirect.
-
-## Arquivos que serão alterados
-
-- migration SQL para recriar `promover_primeiro_escritorio`
-- `src/pages/Login.tsx`
-- `src/lib/auth.tsx`
-
-## Resultado esperado após aplicar
-
-Fluxo esperado:
-
-```text
-Login
-  -> clicar em “Promover usuário a escritório”
-  -> RPC retorna true
-  -> profile.role vira "escritorio"
-  -> replace para /login
-  -> AuthContext recarrega profile atualizado
-  -> redireciona para /app/escritorio
-```
-
-Se você aprovar, eu aplico essa correção agora.
+Se você aprovar, eu faço a conversão da sua conta e em seguida valido o fluxo completo.
