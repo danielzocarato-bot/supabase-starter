@@ -873,8 +873,9 @@ function ImportarAcumModal({
 function AbaUsuarios({ clienteId }: { clienteId: string }) {
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState<ProfileRow[]>([]);
-  const [confirmados, setConfirmados] = useState<Record<string, boolean>>({});
   const [convidarOpen, setConvidarOpen] = useState(false);
+  const [excluindo, setExcluindo] = useState<ProfileRow | null>(null);
+  const [excluindoLoading, setExcluindoLoading] = useState(false);
 
   const carregar = async () => {
     setLoading(true);
@@ -897,14 +898,27 @@ function AbaUsuarios({ clienteId }: { clienteId: string }) {
     });
     if (error || (data && data.ok === false)) {
       const msg = (data as any)?.error || error?.message || "";
-      if (msg.toLowerCase().includes("já está em uso") || msg.toLowerCase().includes("already")) {
-        toast.info("Este usuário já tem acesso.");
-      } else {
-        toast.error("Algo precisa de atenção", { description: msg });
-      }
+      toast.error("Algo precisa de atenção", { description: msg });
       return;
     }
     toast.success("Convite reenviado.");
+  };
+
+  const excluir = async () => {
+    if (!excluindo) return;
+    setExcluindoLoading(true);
+    const { data, error } = await supabase.functions.invoke("excluir-usuario", {
+      body: { user_id: excluindo.id },
+    });
+    setExcluindoLoading(false);
+    if (error || (data && data.ok === false)) {
+      const msg = (data as any)?.error || error?.message || "Não foi possível excluir.";
+      toast.error("Algo precisa de atenção", { description: msg });
+      return;
+    }
+    toast.success("Usuário removido com segurança.");
+    setExcluindo(null);
+    carregar();
   };
 
   return (
@@ -945,10 +959,25 @@ function AbaUsuarios({ clienteId }: { clienteId: string }) {
                   {new Date(u.created_at).toLocaleDateString("pt-BR")}
                 </TableCell>
                 <TableCell className="text-right">
-                  <Button variant="ghost" size="sm" onClick={() => reenviar(u.email)}>
-                    <Mail className="h-4 w-4" />
-                    Reenviar convite
-                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => reenviar(u.email)}>
+                        <Mail className="h-4 w-4 mr-2" /> Reenviar convite
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() => setExcluindo(u)}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" /> Cancelar convite e excluir
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </TableCell>
               </TableRow>
             ))}
@@ -962,6 +991,29 @@ function AbaUsuarios({ clienteId }: { clienteId: string }) {
         clienteId={clienteId}
         onInvited={() => carregar()}
       />
+
+      <AlertDialog open={!!excluindo} onOpenChange={(v) => !v && !excluindoLoading && setExcluindo(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancelar convite e excluir usuário?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {excluindo?.email} perderá o acesso imediatamente. Se ainda não tinha confirmado o
+              convite, o link enviado deixará de funcionar. Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={excluindoLoading}>Voltar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); excluir(); }}
+              disabled={excluindoLoading}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {excluindoLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              {excluindoLoading ? "Processando…" : "Excluir usuário"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }
