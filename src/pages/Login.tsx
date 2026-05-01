@@ -61,13 +61,16 @@ export default function Login() {
     }
     setLoading(true);
     const { data, error } = await supabase.rpc("promover_primeiro_escritorio", { _user_id: user.id });
+    console.log("[promover_primeiro_escritorio] resultado bruto", { data, error, userId: user.id });
     setLoading(false);
-    if (error || !data) {
-      toast.error("Não foi possível promover. Já existe um escritório cadastrado.");
+    if (error || data === false) {
+      toast.error("Não foi possível promover. Verifique se já existe um escritório cadastrado.");
       return;
     }
-    toast.success("Você é o primeiro escritório. Recarregando…");
-    setTimeout(() => window.location.reload(), 800);
+    if (data === true) {
+      toast.success("Promoção concluída. Carregando seu painel…");
+      window.location.replace("/login");
+    }
   };
 
   const handleBootstrap = async (e: React.FormEvent) => {
