@@ -134,6 +134,9 @@ export default function Classificacao() {
   const [pisca, setPisca] = useState<Set<string>>(new Set());
   const [ultimoSave, setUltimoSave] = useState<number | null>(null);
   const [showSaveIndicator, setShowSaveIndicator] = useState(false);
+  const [confirmConcluirOpen, setConfirmConcluirOpen] = useState(false);
+  const [confirmReabrirOpen, setConfirmReabrirOpen] = useState(false);
+  const [acaoLoading, setAcaoLoading] = useState(false);
 
   // Debounce busca
   useEffect(() => {
