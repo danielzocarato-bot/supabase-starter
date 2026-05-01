@@ -410,6 +410,39 @@ export default function Classificacao() {
     } else {
       toast.success("Competência marcada como concluída.");
     }
+
+    // Notifica escritório — somente quando quem concluiu é o cliente
+    if (profile?.role === "cliente" && cliente) {
+      try {
+        const { data: escritorioUsers } = await supabase
+          .from("profiles")
+          .select("email")
+          .eq("role", "escritorio");
+
+        const periodoLabel = formatPeriodo(competencia.periodo);
+        const ctaUrl = `${window.location.origin}/app/escritorio/competencias/${competencia.id}`;
+
+        for (const u of escritorioUsers ?? []) {
+          if (!u.email) continue;
+          await supabase.functions.invoke("send-transactional-email", {
+            body: {
+              templateName: "competencia-concluida",
+              recipientEmail: u.email,
+              idempotencyKey: `concluida-${competencia.id}-${u.email}`,
+              templateData: {
+                nomeCliente: profile.nome ?? cliente.razao_social,
+                razaoSocial: cliente.razao_social,
+                periodoLabel,
+                totalNotas: totalClassificavel,
+                ctaUrl,
+              },
+            },
+          });
+        }
+      } catch (e) {
+        console.error("[handleConcluir] Falha ao enviar email:", e);
+      }
+    }
   };
 
   const handleReabrir = async () => {
@@ -427,6 +460,36 @@ export default function Classificacao() {
     setCompetencia({ ...competencia, status: "aberta" });
     setConfirmReabrirOpen(false);
     toast.success("Competência reaberta.");
+
+    // Notifica clientes do cliente_id desta competência — não bloqueante
+    try {
+      const { data: clientesUsers } = await supabase
+        .from("profiles")
+        .select("email, nome")
+        .eq("cliente_id", competencia.cliente_id)
+        .eq("role", "cliente");
+
+      const periodoLabel = formatPeriodo(competencia.periodo);
+      const ctaUrl = `${window.location.origin}/app/cliente/competencias/${competencia.id}`;
+
+      for (const u of clientesUsers ?? []) {
+        if (!u.email) continue;
+        await supabase.functions.invoke("send-transactional-email", {
+          body: {
+            templateName: "competencia-reaberta",
+            recipientEmail: u.email,
+            idempotencyKey: `reaberta-${competencia.id}-${Date.now()}-${u.email}`,
+            templateData: {
+              nome: u.nome ?? null,
+              periodoLabel,
+              ctaUrl,
+            },
+          },
+        });
+      }
+    } catch (e) {
+      console.error("[handleReabrir] Falha ao enviar email:", e);
+    }
   };
 
   // Exportar TXT Domínio (somente escritório)
