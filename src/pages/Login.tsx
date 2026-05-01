@@ -70,6 +70,53 @@ export default function Login() {
     setTimeout(() => window.location.reload(), 800);
   };
 
+  const handleBootstrap = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (senha !== confirmar) {
+      toast.error("Algo precisa de atenção", { description: "As senhas não coincidem." });
+      return;
+    }
+    if (senha.length < 8) {
+      toast.error("Algo precisa de atenção", { description: "A senha precisa ter pelo menos 8 caracteres." });
+      return;
+    }
+    setLoading(true);
+    const { data: existe } = await supabase.rpc("existe_escritorio");
+    if (existe) {
+      setLoading(false);
+      setExisteEscritorio(true);
+      toast.error("Já existe um escritório cadastrado neste ambiente.");
+      return;
+    }
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password: senha,
+      options: { data: { nome }, emailRedirectTo: `${window.location.origin}/login` },
+    });
+    if (error) {
+      setLoading(false);
+      toast.error("Algo precisa de atenção — tente novamente.", { description: error.message });
+      return;
+    }
+    if (nome && data.user) {
+      await supabase.from("profiles").update({ nome }).eq("id", data.user.id);
+    }
+    if (!data.session) {
+      const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password: senha });
+      if (signInErr) {
+        setLoading(false);
+        toast.error("Conta criada, mas o login falhou. Entre manualmente.");
+        setMode("login");
+        return;
+      }
+    }
+    setLoading(false);
+    toast.success("Conta criada com segurança. Agora promova-se a escritório.");
+    setMode("login");
+    setConfirmar("");
+    setNome("");
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <motion.div
