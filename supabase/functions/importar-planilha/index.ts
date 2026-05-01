@@ -90,7 +90,14 @@ async function fetchEmpresaBrasilAPI(cnpj: string): Promise<{ endereco: string |
       d.complemento,
       d.bairro,
     ].filter((x: any) => x && String(x).trim() !== "");
-    const endereco = partes.length > 0 ? partes.join(", ") : null;
+    let endereco = partes.length > 0 ? partes.join(", ") : null;
+    if (d.cep) {
+      const cep = String(d.cep).replace(/\D/g, "");
+      if (cep.length === 8) {
+        const cepFmt = `${cep.slice(0, 5)}-${cep.slice(5)}`;
+        endereco = endereco ? `${endereco}, CEP ${cepFmt}` : `CEP ${cepFmt}`;
+      }
+    }
     const ibge = d.codigo_municipio_ibge ? String(d.codigo_municipio_ibge) : (d.codigo_municipio ? String(d.codigo_municipio) : null);
     return { endereco, ibge };
   } catch {
@@ -218,11 +225,21 @@ Deno.serve(async (req) => {
     .eq("competencia_id", competencia_id);
   const existentesSet = new Set((existentes ?? []).map((n) => n.id_externo));
 
+  // Verifica se a coluna #Id existe NA PRIMEIRA LINHA (presume schema homogêneo)
+  const primeiraLinha = rows[0];
+  if (!findHeader(primeiraLinha, "#Id")) {
+    return json({
+      ok: false,
+      error: "A coluna #Id é obrigatória e não foi encontrada na planilha. Verifique se você está usando o arquivo correto exportado do UneCont.",
+    }, 400);
+  }
+
   // Mapeia linhas → registros
   const registros: any[] = [];
+  let linhas_ignoradas = 0;
   for (const row of rows) {
     const idExt = getVal(row, "#Id");
-    if (idExt == null || idExt === "") continue; // pula linhas sem chave
+    if (idExt == null || idExt === "") { linhas_ignoradas++; continue; }
 
     const valor_nfe = toNumber(getVal(row, "Valor NFe"));
     const desconto = toNumber(getVal(row, "Desconto Incondicionado")) ?? 0;
@@ -246,7 +263,12 @@ Deno.serve(async (req) => {
       emissao_nfe: excelDateToISO(getVal(row, "Emissão NFe")),
       data_competencia: excelDateToISO(getVal(row, "Data Competência")),
       prestador_razao: getVal(row, "Prestador") ?? null,
-      prestador_cnpj: getVal(row, "Cnpj/Cpf Prestador") != null ? String(getVal(row, "Cnpj/Cpf Prestador")) : null,
+      prestador_cnpj: (() => {
+        const v = getVal(row, "Cnpj/Cpf Prestador");
+        if (v == null) return null;
+        const d = digitsOnly(String(v));
+        return d.length >= 11 ? d : null; // 11=CPF, 14=CNPJ
+      })(),
       prestador_municipio,
       prestador_uf,
       cnae_descricao: getVal(row, "CNAE Descrição") ?? null,
@@ -261,7 +283,10 @@ Deno.serve(async (req) => {
   }
 
   if (!registros.length) {
-    return json({ ok: false, error: "Nenhuma linha válida encontrada (faltou coluna #Id)." }, 400);
+    return json({
+      ok: false,
+      error: `Nenhuma linha válida encontrada (todas as ${rows.length} linhas tinham #Id vazio).`,
+    }, 400);
   }
 
   // UPSERT preservando classificação. Estratégia: como o upsert padrão atualiza TODOS
@@ -305,9 +330,7 @@ Deno.serve(async (req) => {
       if (!info || (!info.endereco && !info.ibge)) {
         throw new Error("sem dados");
       }
-      // Update todas as notas dessa competência cujo prestador_cnpj (apenas dígitos) bate
-      // Como prestador_cnpj pode estar formatado, buscamos por padrões equivalentes
-      const formatted = `${cnpj.slice(0, 2)}.${cnpj.slice(2, 5)}.${cnpj.slice(5, 8)}/${cnpj.slice(8, 12)}-${cnpj.slice(12)}`;
+      // prestador_cnpj agora é sempre dígitos
       const { error } = await admin
         .from("notas_fiscais")
         .update({
@@ -315,7 +338,7 @@ Deno.serve(async (req) => {
           prestador_municipio_ibge: info.ibge,
         })
         .eq("competencia_id", competencia_id)
-        .in("prestador_cnpj", [cnpj, formatted]);
+        .eq("prestador_cnpj", cnpj);
       if (error) throw error;
       return true;
     });
@@ -332,6 +355,7 @@ Deno.serve(async (req) => {
     adicionadas,
     mescladas,
     total: registros.length,
+    linhas_ignoradas,
     enriquecidos,
     falhas_enriquecimento,
   });
