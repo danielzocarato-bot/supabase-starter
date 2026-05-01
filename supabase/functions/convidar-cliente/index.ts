@@ -71,8 +71,8 @@ Deno.serve(async (req) => {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
-  const origin = req.headers.get("origin") ?? "";
-  const redirectTo = origin ? `${origin}/reset-password` : undefined;
+  const APP_ORIGIN = Deno.env.get("APP_ORIGIN") ?? "https://classifica.acrux-group.com.br";
+  const redirectTo = `${APP_ORIGIN}/reset-password`;
 
   // Helper: localiza user existente por email
   async function buscarUserPorEmail(targetEmail: string): Promise<string | null> {
