@@ -1,0 +1,1 @@
+UPDATE public.profiles SET role = 'escritorio', cliente_id = NULL, nome = NULL WHERE id = '3947bbba-bdfb-4aca-9c30-2c346ad3f0fb' AND email = 'daniel.zocarato@gmail.com';
