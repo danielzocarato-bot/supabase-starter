@@ -102,9 +102,7 @@ for (const e of entries) {
     target: "bun",
     format: "esm",
     naming: `${e.name}.mjs`,
-    external: ["react", "react-dom", "@react-email/components"],
-    // @ts-expect-error - jsx options accepted by Bun.build
-    jsx: { runtime: "classic", factory: "React.createElement", fragment: "React.Fragment" },
+    // Não marcar como external — bundle tudo para evitar resolução em /tmp
   });
   if (!result.success) {
     console.error("Build failed for", e.name, result.logs);
