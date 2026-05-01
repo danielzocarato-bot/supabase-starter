@@ -370,6 +370,45 @@ export default function Classificacao() {
     [drawerNotaId, notas],
   );
 
+  // Concluir / Reabrir competência
+  const handleConcluir = async () => {
+    if (!competencia) return;
+    setAcaoLoading(true);
+    const { error } = await supabase
+      .from("competencias")
+      .update({ status: "concluida", concluida_em: new Date().toISOString() })
+      .eq("id", competencia.id);
+    setAcaoLoading(false);
+    if (error) {
+      toast.error("Algo precisa de atenção", { description: error.message });
+      return;
+    }
+    setCompetencia({ ...competencia, status: "concluida" });
+    setConfirmConcluirOpen(false);
+    if (profile?.role === "cliente") {
+      toast.success("Classificação validada com segurança.");
+    } else {
+      toast.success("Competência marcada como concluída.");
+    }
+  };
+
+  const handleReabrir = async () => {
+    if (!competencia) return;
+    setAcaoLoading(true);
+    const { error } = await supabase
+      .from("competencias")
+      .update({ status: "aberta", concluida_em: null })
+      .eq("id", competencia.id);
+    setAcaoLoading(false);
+    if (error) {
+      toast.error("Algo precisa de atenção", { description: error.message });
+      return;
+    }
+    setCompetencia({ ...competencia, status: "aberta" });
+    setConfirmReabrirOpen(false);
+    toast.success("Competência reaberta.");
+  };
+
   // -------- Render --------
   if (loading) {
     return (
