@@ -62,6 +62,17 @@ function formatDateBR(d: string | null | undefined) {
   if (!y || !m || !day) return d;
   return `${day}/${m}/${y}`;
 }
+function formatDateTimeBR(iso: string | null | undefined) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yyyy = d.getFullYear();
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mi = String(d.getMinutes()).padStart(2, "0");
+  return `${dd}/${mm}/${yyyy} às ${hh}:${mi}`;
+}
 function normalize(s: string) {
   return (s || "")
     .toLowerCase()
