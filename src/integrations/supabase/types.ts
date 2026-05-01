@@ -14,16 +14,284 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      acumuladores: {
+        Row: {
+          ativo: boolean
+          cliente_id: string
+          codigo: number
+          created_at: string
+          descricao: string
+          id: string
+        }
+        Insert: {
+          ativo?: boolean
+          cliente_id: string
+          codigo: number
+          created_at?: string
+          descricao: string
+          id?: string
+        }
+        Update: {
+          ativo?: boolean
+          cliente_id?: string
+          codigo?: number
+          created_at?: string
+          descricao?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "acumuladores_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clientes: {
+        Row: {
+          ativo: boolean
+          cnpj: string
+          codigo_empresa_dominio: number
+          created_at: string
+          endereco: string | null
+          id: string
+          municipio: string | null
+          municipio_ibge: string | null
+          razao_social: string
+          uf: string | null
+        }
+        Insert: {
+          ativo?: boolean
+          cnpj: string
+          codigo_empresa_dominio: number
+          created_at?: string
+          endereco?: string | null
+          id?: string
+          municipio?: string | null
+          municipio_ibge?: string | null
+          razao_social: string
+          uf?: string | null
+        }
+        Update: {
+          ativo?: boolean
+          cnpj?: string
+          codigo_empresa_dominio?: number
+          created_at?: string
+          endereco?: string | null
+          id?: string
+          municipio?: string | null
+          municipio_ibge?: string | null
+          razao_social?: string
+          uf?: string | null
+        }
+        Relationships: []
+      }
+      competencias: {
+        Row: {
+          arquivo_origem: string | null
+          cliente_id: string
+          concluida_em: string | null
+          created_at: string
+          exportada_em: string | null
+          id: string
+          notas_classificadas: number
+          periodo: string
+          status: Database["public"]["Enums"]["competencia_status"]
+          total_notas: number
+        }
+        Insert: {
+          arquivo_origem?: string | null
+          cliente_id: string
+          concluida_em?: string | null
+          created_at?: string
+          exportada_em?: string | null
+          id?: string
+          notas_classificadas?: number
+          periodo: string
+          status?: Database["public"]["Enums"]["competencia_status"]
+          total_notas?: number
+        }
+        Update: {
+          arquivo_origem?: string | null
+          cliente_id?: string
+          concluida_em?: string | null
+          created_at?: string
+          exportada_em?: string | null
+          id?: string
+          notas_classificadas?: number
+          periodo?: string
+          status?: Database["public"]["Enums"]["competencia_status"]
+          total_notas?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "competencias_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notas_fiscais: {
+        Row: {
+          acumulador_id: string | null
+          cancelada: boolean
+          classificado_em: string | null
+          classificado_por: string | null
+          cnae_descricao: string | null
+          competencia_id: string
+          created_at: string
+          data_competencia: string | null
+          desconto: number
+          emissao_nfe: string | null
+          id: string
+          id_externo: string
+          numero_nfe: string | null
+          observacao: string | null
+          prestador_cnpj: string | null
+          prestador_endereco: string | null
+          prestador_municipio: string | null
+          prestador_municipio_ibge: string | null
+          prestador_razao: string | null
+          prestador_uf: string | null
+          raw_data: Json | null
+          servico_municipal: string | null
+          updated_at: string
+          valor_contabil: number | null
+          valor_nfe: number | null
+        }
+        Insert: {
+          acumulador_id?: string | null
+          cancelada?: boolean
+          classificado_em?: string | null
+          classificado_por?: string | null
+          cnae_descricao?: string | null
+          competencia_id: string
+          created_at?: string
+          data_competencia?: string | null
+          desconto?: number
+          emissao_nfe?: string | null
+          id?: string
+          id_externo: string
+          numero_nfe?: string | null
+          observacao?: string | null
+          prestador_cnpj?: string | null
+          prestador_endereco?: string | null
+          prestador_municipio?: string | null
+          prestador_municipio_ibge?: string | null
+          prestador_razao?: string | null
+          prestador_uf?: string | null
+          raw_data?: Json | null
+          servico_municipal?: string | null
+          updated_at?: string
+          valor_contabil?: number | null
+          valor_nfe?: number | null
+        }
+        Update: {
+          acumulador_id?: string | null
+          cancelada?: boolean
+          classificado_em?: string | null
+          classificado_por?: string | null
+          cnae_descricao?: string | null
+          competencia_id?: string
+          created_at?: string
+          data_competencia?: string | null
+          desconto?: number
+          emissao_nfe?: string | null
+          id?: string
+          id_externo?: string
+          numero_nfe?: string | null
+          observacao?: string | null
+          prestador_cnpj?: string | null
+          prestador_endereco?: string | null
+          prestador_municipio?: string | null
+          prestador_municipio_ibge?: string | null
+          prestador_razao?: string | null
+          prestador_uf?: string | null
+          raw_data?: Json | null
+          servico_municipal?: string | null
+          updated_at?: string
+          valor_contabil?: number | null
+          valor_nfe?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notas_fiscais_acumulador_id_fkey"
+            columns: ["acumulador_id"]
+            isOneToOne: false
+            referencedRelation: "acumuladores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notas_fiscais_classificado_por_fkey"
+            columns: ["classificado_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notas_fiscais_competencia_id_fkey"
+            columns: ["competencia_id"]
+            isOneToOne: false
+            referencedRelation: "competencias"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          cliente_id: string | null
+          created_at: string
+          email: string
+          id: string
+          nome: string | null
+          role: Database["public"]["Enums"]["user_role"]
+        }
+        Insert: {
+          cliente_id?: string | null
+          created_at?: string
+          email: string
+          id: string
+          nome?: string | null
+          role?: Database["public"]["Enums"]["user_role"]
+        }
+        Update: {
+          cliente_id?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          nome?: string | null
+          role?: Database["public"]["Enums"]["user_role"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      existe_escritorio: { Args: never; Returns: boolean }
+      is_escritorio: { Args: never; Returns: boolean }
+      meu_cliente_id: { Args: never; Returns: string }
+      promover_primeiro_escritorio: {
+        Args: { _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      competencia_status: "aberta" | "concluida" | "exportada"
+      user_role: "escritorio" | "cliente"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +418,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      competencia_status: ["aberta", "concluida", "exportada"],
+      user_role: ["escritorio", "cliente"],
+    },
   },
 } as const
