@@ -38,7 +38,7 @@ import {
 import { toast } from "sonner";
 import {
   ArrowLeft, Check, CheckCircle2, ChevronLeft, ChevronRight, ChevronsUpDown,
-  Download, FileText, Loader2, Search, Undo2, X,
+  Download, Loader2, Search, Undo2, X,
 } from "lucide-react";
 import { formatCNPJ } from "@/lib/format";
 import { StatusCompetenciaBadge } from "@/components/StatusCompetenciaBadge";
