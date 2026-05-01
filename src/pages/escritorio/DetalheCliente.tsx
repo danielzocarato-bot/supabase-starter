@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import {
-  ArrowLeft, Loader2, Pencil, Plus, RefreshCw, Search, Upload, UserPlus, Mail, Trash2, MoreHorizontal,
+  ArrowLeft, Loader2, Pencil, Plus, RefreshCw, Search, Upload, UserPlus, Mail, Trash2, MoreHorizontal, FileSpreadsheet, ArrowRight,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
@@ -154,11 +154,7 @@ export default function DetalheCliente() {
           <AbaAcumuladores clienteId={cliente.id} />
         </TabsContent>
         <TabsContent value="competencias">
-          <Card className="p-12 rounded-xl text-center">
-            <p className="text-muted-foreground max-w-md mx-auto">
-              Esta área será construída na Fase 3, quando habilitarmos o upload das planilhas mensais.
-            </p>
-          </Card>
+          <AbaCompetencias clienteId={cliente.id} />
         </TabsContent>
         <TabsContent value="usuarios">
           <AbaUsuarios clienteId={cliente.id} />
