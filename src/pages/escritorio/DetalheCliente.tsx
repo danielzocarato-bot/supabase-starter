@@ -22,8 +22,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import {
-  ArrowLeft, Loader2, Pencil, Plus, RefreshCw, Search, Upload, UserPlus, Mail,
+  ArrowLeft, Loader2, Pencil, Plus, RefreshCw, Search, Upload, UserPlus, Mail, Trash2, MoreHorizontal,
 } from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import { formatCNPJ, onlyDigits } from "@/lib/format";
 
 type Cliente = {
