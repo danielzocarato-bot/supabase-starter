@@ -22,17 +22,31 @@ export default function ResetPassword() {
   useEffect(() => {
     let cancelado = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
-    let unsubscribe: (() => void) | undefined;
+
+    // 0) Se a URL traz erro do Supabase no hash (#error=access_denied&error_code=otp_expired)
+    const hash = window.location.hash.startsWith("#") ? window.location.hash.slice(1) : "";
+    const hashParams = new URLSearchParams(hash);
+    if (hashParams.get("error")) {
+      setStatus("invalido");
+      return;
+    }
+
+    // 1) Instala listener ANTES de qualquer coisa async
+    const { data: sub } = supabase.auth.onAuthStateChange((event, sess) => {
+      if (sess && (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN" || event === "INITIAL_SESSION" || event === "USER_UPDATED")) {
+        if (!cancelado) setStatus("pronto");
+      }
+    });
 
     const estabelecer = async () => {
-      // 1) Já tem sessão? (detectSessionInUrl pode ter processado o hash)
+      // 2) Já tem sessão? (detectSessionInUrl já processou o hash)
       const { data: { session: sessAtual } } = await supabase.auth.getSession();
       if (sessAtual) {
         if (!cancelado) setStatus("pronto");
         return;
       }
 
-      // 2) URL com ?code=... (PKCE)
+      // 3) URL com ?code=... (PKCE)
       const code = searchParams.get("code");
       if (code) {
         const { error } = await supabase.auth.exchangeCodeForSession(code);
@@ -42,7 +56,7 @@ export default function ResetPassword() {
         }
       }
 
-      // 3) URL com ?token_hash=...&type=... (link verify direto)
+      // 4) URL com ?token_hash=...&type=...
       const token_hash = searchParams.get("token_hash");
       const type = searchParams.get("type") as "invite" | "recovery" | "signup" | "magiclink" | null;
       if (token_hash && type) {
@@ -53,26 +67,18 @@ export default function ResetPassword() {
         }
       }
 
-      // 4) Espera evento PASSWORD_RECOVERY (caso o cliente esteja processando async)
-      const { data: sub } = supabase.auth.onAuthStateChange((event, sess) => {
-        if (sess && (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN" || event === "USER_UPDATED")) {
-          if (!cancelado) setStatus("pronto");
-        }
-      });
-      unsubscribe = () => sub.subscription.unsubscribe();
-
-      // Timeout de 3s — se nada estabelecer sessão, marca como inválido
+      // 5) Aguarda até 8s pelo evento async (detectSessionInUrl pode demorar)
       timer = setTimeout(async () => {
         const { data: { session: s2 } } = await supabase.auth.getSession();
         if (!cancelado && !s2) setStatus("invalido");
-      }, 3000);
+      }, 8000);
     };
     estabelecer();
 
     return () => {
       cancelado = true;
       if (timer) clearTimeout(timer);
-      if (unsubscribe) unsubscribe();
+      sub.subscription.unsubscribe();
     };
   }, [searchParams]);
 
