@@ -38,7 +38,7 @@ import {
 import { toast } from "sonner";
 import {
   ArrowLeft, Check, CheckCircle2, ChevronLeft, ChevronRight, ChevronsUpDown,
-  Download, FileText, Loader2, Search, Undo2, X,
+  Download, Loader2, Search, Undo2, X,
 } from "lucide-react";
 import { formatCNPJ } from "@/lib/format";
 import { StatusCompetenciaBadge } from "@/components/StatusCompetenciaBadge";
@@ -152,9 +152,10 @@ export default function Classificacao() {
   const [confirmConcluirOpen, setConfirmConcluirOpen] = useState(false);
   const [confirmReabrirOpen, setConfirmReabrirOpen] = useState(false);
   const [acaoLoading, setAcaoLoading] = useState(false);
-  const [exportandoLoading, setExportandoLoading] = useState(false);
-  const [pendentes, setPendentes] = useState<string[] | null>(null);
-  const [tipoPendencia, setTipoPendencia] = useState<"classificacao" | "ibge" | null>(null);
+  const [exportando, setExportando] = useState(false);
+  const [pendentesModalOpen, setPendentesModalOpen] = useState(false);
+  const [pendentesLista, setPendentesLista] = useState<string[]>([]);
+  const [pendentesTipo, setPendentesTipo] = useState<"classificacao" | "ibge" | null>(null);
 
   // Debounce busca
   useEffect(() => {
@@ -431,7 +432,7 @@ export default function Classificacao() {
   // Exportar TXT Domínio (somente escritório)
   const handleExportar = async () => {
     if (!competencia || !cliente) return;
-    setExportandoLoading(true);
+    setExportando(true);
     try {
       const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
       const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
@@ -454,8 +455,9 @@ export default function Classificacao() {
         let body: any = null;
         try { body = await res.json(); } catch {}
         if (body?.pendentes?.length) {
-          setPendentes(body.pendentes);
-          setTipoPendencia(body.tipo_pendencia ?? "classificacao");
+          setPendentesLista(body.pendentes ?? []);
+          setPendentesTipo(body.tipo_pendencia ?? "classificacao");
+          setPendentesModalOpen(true);
           return;
         }
         toast.error("Algo precisa de atenção", {
@@ -482,7 +484,7 @@ export default function Classificacao() {
     } catch (e: any) {
       toast.error("Algo precisa de atenção", { description: e?.message ?? "Falha na exportação." });
     } finally {
-      setExportandoLoading(false);
+      setExportando(false);
     }
   };
 
@@ -574,30 +576,27 @@ export default function Classificacao() {
                     Reabrir competência
                   </Button>
                 )}
-                {profile?.role === "escritorio" && competencia.status === "concluida" && (
+                {profile?.role === "escritorio" &&
+                  (competencia.status === "concluida" || competencia.status === "exportada") && (
                   <Button
                     size="sm"
                     onClick={handleExportar}
-                    disabled={exportandoLoading}
-                    className="bg-brand text-brand-foreground hover:bg-brand/90"
+                    disabled={exportando}
+                    variant={competencia.status === "exportada" ? "outline" : "default"}
+                    className={
+                      competencia.status === "exportada"
+                        ? ""
+                        : "bg-brand text-brand-foreground hover:bg-brand/90"
+                    }
                   >
-                    {exportandoLoading
-                      ? <Loader2 className="h-4 w-4 animate-spin" />
-                      : <FileText className="h-4 w-4" />}
-                    Exportar TXT Domínio
-                  </Button>
-                )}
-                {profile?.role === "escritorio" && competencia.status === "exportada" && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleExportar}
-                    disabled={exportandoLoading}
-                  >
-                    {exportandoLoading
+                    {exportando
                       ? <Loader2 className="h-4 w-4 animate-spin" />
                       : <Download className="h-4 w-4" />}
-                    Re-exportar TXT
+                    {exportando
+                      ? "Processando…"
+                      : competencia.status === "exportada"
+                        ? "Re-exportar TXT"
+                        : "Exportar TXT Domínio"}
                   </Button>
                 )}
               </div>
@@ -939,31 +938,28 @@ export default function Classificacao() {
         </AlertDialog>
 
         {/* NFs pendentes (export) */}
-        <Dialog
-          open={!!pendentes}
-          onOpenChange={(o) => { if (!o) { setPendentes(null); setTipoPendencia(null); } }}
-        >
+        <Dialog open={pendentesModalOpen} onOpenChange={setPendentesModalOpen}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>
-                {tipoPendencia === "ibge"
+                {pendentesTipo === "ibge"
                   ? "Há prestadores sem código IBGE"
                   : "Há notas pendentes de classificação"}
               </DialogTitle>
               <DialogDescription>
-                {tipoPendencia === "ibge"
-                  ? "Re-importe a planilha ou edite os prestadores abaixo antes de exportar."
+                {pendentesTipo === "ibge"
+                  ? "Algumas notas têm prestadores sem o código IBGE do município. Tente re-importar a planilha (a app vai consultar a Receita Federal novamente) ou ajuste manualmente o município do prestador antes de exportar."
                   : "Classifique as notas abaixo antes de exportar."}
               </DialogDescription>
             </DialogHeader>
             <div className="max-h-80 overflow-auto rounded-lg border bg-muted/20 p-3 space-y-1">
-              {(pendentes ?? []).map((p, i) => (
+              {pendentesLista.map((p, i) => (
                 <p key={i} className="text-sm font-mono">{p}</p>
               ))}
             </div>
             <DialogFooter>
               <Button
-                onClick={() => { setPendentes(null); setTipoPendencia(null); }}
+                onClick={() => setPendentesModalOpen(false)}
                 className="bg-brand text-brand-foreground hover:bg-brand/90"
               >
                 Voltar à classificação
