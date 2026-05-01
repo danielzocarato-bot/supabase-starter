@@ -38,10 +38,14 @@ async function copyTreePatched(src: string, dst: string) {
     const d = path.join(dst, entry.name);
     if (entry.isDirectory()) await copyTreePatched(s, d);
     else if (entry.name.endsWith(".tsx") || entry.name.endsWith(".ts")) {
-      const content = fs.readFileSync(s, "utf-8")
+      let content = fs.readFileSync(s, "utf-8")
         .replace(/npm:react@18\.3\.1/g, "react")
         .replace(/npm:@types\/react@18\.3\.1/g, "@types/react")
         .replace(/npm:@react-email\/components@0\.0\.22/g, "@react-email/components");
+      // Garante import explícito do React em arquivos TSX (classic JSX)
+      if (entry.name.endsWith(".tsx") && !/^import \* as React/m.test(content)) {
+        content = `import * as React from "react";\n` + content;
+      }
       fs.writeFileSync(d, content);
     } else {
       fs.copyFileSync(s, d);
