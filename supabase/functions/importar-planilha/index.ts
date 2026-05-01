@@ -77,6 +77,13 @@ function digitsOnly(v: string): string {
   return (v ?? "").replace(/\D/g, "");
 }
 
+function formatPeriodoLabel(p: string): string {
+  const meses = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+  const m = p.match(/^(\d{4})-(\d{2})$/);
+  if (!m) return p;
+  return `${meses[parseInt(m[2],10)-1]} / ${m[1]}`;
+}
+
 async function fetchEmpresaBrasilAPI(cnpj: string): Promise<{ endereco: string | null; ibge: string | null } | null> {
   try {
     const r = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`, {
@@ -347,6 +354,52 @@ Deno.serve(async (req) => {
       if (s.status === "fulfilled") enriquecidos++;
       else falhas_enriquecimento++;
     }
+  }
+
+
+  // Notifica usuários cliente — não bloqueante
+  try {
+    const { data: clientesUsers } = await admin
+      .from("profiles")
+      .select("email, nome")
+      .eq("cliente_id", cliente_id)
+      .eq("role", "cliente");
+
+    const { data: cli } = await admin
+      .from("clientes")
+      .select("razao_social")
+      .eq("id", cliente_id)
+      .maybeSingle();
+
+    const appOrigin = Deno.env.get("APP_ORIGIN") ?? "https://classifica.acrux-group.com.br";
+    const periodoLabel = formatPeriodoLabel(periodo);
+    const ctaUrl = `${appOrigin}/app/cliente/competencias/${competencia_id}`;
+    const totalNotas = registros.length;
+
+    for (const u of clientesUsers ?? []) {
+      if (!u.email) continue;
+      try {
+        await admin.functions.invoke("send-transactional-email", {
+          body: {
+            templateName: "competencia-pronta",
+            recipientEmail: u.email,
+            idempotencyKey: `pronta-${competencia_id}-${u.email}`,
+            templateData: {
+              nome: u.nome ?? null,
+              razaoSocial: cli?.razao_social ?? "Sua contabilidade",
+              periodoLabel,
+              totalNotas,
+              ctaUrl,
+            },
+          },
+        });
+      } catch (sendErr) {
+        console.error("[importar-planilha] Falha ao enviar email para", u.email, sendErr);
+      }
+    }
+  } catch (e) {
+    console.error("[importar-planilha] Falha ao notificar clientes:", e);
+    // Não bloqueia
   }
 
   return json({
