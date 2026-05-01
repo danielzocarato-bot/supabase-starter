@@ -14,9 +14,11 @@ import { Loader2 } from "lucide-react";
 export default function Login() {
   const nav = useNavigate();
   const { user, profile, loading: authLoading } = useAuth();
-  const [mode, setMode] = useState<"login" | "forgot">("login");
+  const [mode, setMode] = useState<"login" | "forgot" | "bootstrap">("login");
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
+  const [nome, setNome] = useState("");
+  const [confirmar, setConfirmar] = useState("");
   const [loading, setLoading] = useState(false);
   const [existeEscritorio, setExisteEscritorio] = useState<boolean | null>(null);
 
@@ -68,6 +70,53 @@ export default function Login() {
     setTimeout(() => window.location.reload(), 800);
   };
 
+  const handleBootstrap = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (senha !== confirmar) {
+      toast.error("Algo precisa de atenção", { description: "As senhas não coincidem." });
+      return;
+    }
+    if (senha.length < 8) {
+      toast.error("Algo precisa de atenção", { description: "A senha precisa ter pelo menos 8 caracteres." });
+      return;
+    }
+    setLoading(true);
+    const { data: existe } = await supabase.rpc("existe_escritorio");
+    if (existe) {
+      setLoading(false);
+      setExisteEscritorio(true);
+      toast.error("Já existe um escritório cadastrado neste ambiente.");
+      return;
+    }
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password: senha,
+      options: { data: { nome }, emailRedirectTo: `${window.location.origin}/login` },
+    });
+    if (error) {
+      setLoading(false);
+      toast.error("Algo precisa de atenção — tente novamente.", { description: error.message });
+      return;
+    }
+    if (nome && data.user) {
+      await supabase.from("profiles").update({ nome }).eq("id", data.user.id);
+    }
+    if (!data.session) {
+      const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password: senha });
+      if (signInErr) {
+        setLoading(false);
+        toast.error("Conta criada, mas o login falhou. Entre manualmente.");
+        setMode("login");
+        return;
+      }
+    }
+    setLoading(false);
+    toast.success("Conta criada com segurança. Agora promova-se a escritório.");
+    setMode("login");
+    setConfirmar("");
+    setNome("");
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <motion.div
@@ -81,51 +130,98 @@ export default function Login() {
         </div>
         <Card className="p-8 rounded-xl border shadow-sm">
           <h1 className="text-2xl font-display font-semibold mb-1">
-            {mode === "login" ? "Entrar" : "Recuperar acesso"}
+            {mode === "login" ? "Entrar" : mode === "forgot" ? "Recuperar acesso" : "Criar conta inicial"}
           </h1>
           <p className="text-sm text-muted-foreground mb-6">
             {mode === "login"
               ? "Acesse para classificar suas notas com segurança."
-              : "Informe seu email para receber as instruções."}
+              : mode === "forgot"
+              ? "Informe seu email para receber as instruções."
+              : "Esta conta será a base do ambiente. Em seguida, promova-se a escritório."}
           </p>
 
-          <form onSubmit={mode === "login" ? handleLogin : handleForgot} className="space-y-4">
+          <form
+            onSubmit={mode === "login" ? handleLogin : mode === "forgot" ? handleForgot : handleBootstrap}
+            className="space-y-4"
+          >
+            {mode === "bootstrap" && (
+              <div className="space-y-2">
+                <Label htmlFor="nome">Nome completo</Label>
+                <Input id="nome" type="text" required value={nome} onChange={e => setNome(e.target.value)} />
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input id="email" type="email" required value={email} onChange={e => setEmail(e.target.value)} />
             </div>
 
-            {mode === "login" && (
+            {(mode === "login" || mode === "bootstrap") && (
               <div className="space-y-2">
                 <Label htmlFor="senha">Senha</Label>
-                <Input id="senha" type="password" required value={senha} onChange={e => setSenha(e.target.value)} />
+                <Input id="senha" type="password" required minLength={mode === "bootstrap" ? 8 : undefined} value={senha} onChange={e => setSenha(e.target.value)} />
+              </div>
+            )}
+
+            {mode === "bootstrap" && (
+              <div className="space-y-2">
+                <Label htmlFor="confirmar">Confirmar senha</Label>
+                <Input id="confirmar" type="password" required minLength={8} value={confirmar} onChange={e => setConfirmar(e.target.value)} />
               </div>
             )}
 
             <Button type="submit" disabled={loading} className="w-full bg-brand text-brand-foreground hover:bg-brand/90 h-10">
               {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-              {loading ? "Processando…" : mode === "login" ? "Entrar" : "Enviar instruções"}
+              {loading
+                ? "Processando…"
+                : mode === "login"
+                ? "Entrar"
+                : mode === "forgot"
+                ? "Enviar instruções"
+                : "Criar conta inicial"}
             </Button>
           </form>
 
-          <div className="mt-4 flex justify-between text-sm">
-            <button
-              type="button"
-              onClick={() => setMode(mode === "login" ? "forgot" : "login")}
-              className="text-brand hover:underline"
-            >
-              {mode === "login" ? "Esqueci minha senha" : "Voltar ao login"}
-            </button>
-          </div>
+          {mode !== "bootstrap" && (
+            <div className="mt-4 flex justify-between text-sm">
+              <button
+                type="button"
+                onClick={() => setMode(mode === "login" ? "forgot" : "login")}
+                className="text-brand hover:underline"
+              >
+                {mode === "login" ? "Esqueci minha senha" : "Voltar ao login"}
+              </button>
+            </div>
+          )}
 
-          {existeEscritorio === false && user && (
-            <div className="mt-6 pt-6 border-t">
-              <p className="text-xs text-muted-foreground mb-3">
-                Configuração inicial: ainda não há um escritório cadastrado. Promova o usuário atual para escritório.
-              </p>
-              <Button variant="outline" onClick={handlePromover} disabled={loading} className="w-full">
-                Promover usuário a escritório
-              </Button>
+          {mode === "bootstrap" && (
+            <div className="mt-4 text-sm">
+              <button type="button" onClick={() => setMode("login")} className="text-brand hover:underline">
+                Voltar ao login
+              </button>
+            </div>
+          )}
+
+          {existeEscritorio === false && (
+            <div className="mt-6 pt-6 border-t space-y-4">
+              <div>
+                <p className="text-sm font-medium mb-1">Configuração inicial</p>
+                <p className="text-xs text-muted-foreground">
+                  Crie a primeira conta deste ambiente. Esta opção fica disponível apenas até o primeiro escritório ser cadastrado.
+                </p>
+              </div>
+
+              {!user && mode !== "bootstrap" && (
+                <Button variant="outline" onClick={() => setMode("bootstrap")} disabled={loading} className="w-full">
+                  Criar conta inicial
+                </Button>
+              )}
+
+              {user && (
+                <Button variant="outline" onClick={handlePromover} disabled={loading} className="w-full">
+                  Promover usuário a escritório
+                </Button>
+              )}
             </div>
           )}
         </Card>
