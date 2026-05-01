@@ -32,10 +32,13 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import {
   ArrowLeft, Check, CheckCircle2, ChevronLeft, ChevronRight, ChevronsUpDown,
-  Loader2, Search, Undo2, X,
+  Download, FileText, Loader2, Search, Undo2, X,
 } from "lucide-react";
 import { formatCNPJ } from "@/lib/format";
 import { StatusCompetenciaBadge } from "@/components/StatusCompetenciaBadge";
@@ -59,6 +62,17 @@ function formatDateBR(d: string | null | undefined) {
   if (!y || !m || !day) return d;
   return `${day}/${m}/${y}`;
 }
+function formatDateTimeBR(iso: string | null | undefined) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yyyy = d.getFullYear();
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mi = String(d.getMinutes()).padStart(2, "0");
+  return `${dd}/${mm}/${yyyy} às ${hh}:${mi}`;
+}
 function normalize(s: string) {
   return (s || "")
     .toLowerCase()
@@ -78,6 +92,7 @@ type Competencia = {
   total_notas: number;
   notas_classificadas: number;
   arquivo_origem: string | null;
+  exportada_em: string | null;
 };
 type Cliente = { id: string; razao_social: string; cnpj: string };
 
@@ -137,6 +152,9 @@ export default function Classificacao() {
   const [confirmConcluirOpen, setConfirmConcluirOpen] = useState(false);
   const [confirmReabrirOpen, setConfirmReabrirOpen] = useState(false);
   const [acaoLoading, setAcaoLoading] = useState(false);
+  const [exportandoLoading, setExportandoLoading] = useState(false);
+  const [pendentes, setPendentes] = useState<string[] | null>(null);
+  const [tipoPendencia, setTipoPendencia] = useState<"classificacao" | "ibge" | null>(null);
 
   // Debounce busca
   useEffect(() => {
@@ -160,7 +178,7 @@ export default function Classificacao() {
       setLoading(true);
       const compReq = supabase
         .from("competencias")
-        .select("id, cliente_id, periodo, status, total_notas, notas_classificadas, arquivo_origem, clientes(id, razao_social, cnpj)")
+        .select("id, cliente_id, periodo, status, total_notas, notas_classificadas, arquivo_origem, exportada_em, clientes(id, razao_social, cnpj)")
         .eq("id", id)
         .maybeSingle();
       const notasReq = supabase
@@ -186,6 +204,7 @@ export default function Classificacao() {
         total_notas: cd.total_notas,
         notas_classificadas: cd.notas_classificadas,
         arquivo_origem: cd.arquivo_origem,
+        exportada_em: cd.exportada_em,
       };
       const cli: Cliente | null = cd.clientes
         ? { id: cd.clientes.id, razao_social: cd.clientes.razao_social, cnpj: cd.clientes.cnpj }
@@ -409,6 +428,64 @@ export default function Classificacao() {
     toast.success("Competência reaberta.");
   };
 
+  // Exportar TXT Domínio (somente escritório)
+  const handleExportar = async () => {
+    if (!competencia || !cliente) return;
+    setExportandoLoading(true);
+    try {
+      const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
+      const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
+      const { data: sessionRes } = await supabase.auth.getSession();
+      const token = sessionRes.session?.access_token;
+      if (!token) {
+        toast.error("Algo precisa de atenção", { description: "Sessão expirada." });
+        return;
+      }
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/gerar-txt-dominio`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+          "apikey": SUPABASE_PUBLISHABLE_KEY,
+        },
+        body: JSON.stringify({ competencia_id: competencia.id }),
+      });
+      if (!res.ok) {
+        let body: any = null;
+        try { body = await res.json(); } catch {}
+        if (body?.pendentes?.length) {
+          setPendentes(body.pendentes);
+          setTipoPendencia(body.tipo_pendencia ?? "classificacao");
+          return;
+        }
+        toast.error("Algo precisa de atenção", {
+          description: body?.error ?? "Falha na exportação.",
+        });
+        return;
+      }
+      const blob = await res.blob();
+      const cnpjDigits = (cliente.cnpj ?? "").replace(/\D/g, "");
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `dominio_${cnpjDigits}_${competencia.periodo}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      setCompetencia({
+        ...competencia,
+        status: "exportada",
+        exportada_em: new Date().toISOString(),
+      });
+      toast.success("Arquivo gerado e pronto para importação no Domínio.");
+    } catch (e: any) {
+      toast.error("Algo precisa de atenção", { description: e?.message ?? "Falha na exportação." });
+    } finally {
+      setExportandoLoading(false);
+    }
+  };
+
   // -------- Render --------
   if (loading) {
     return (
@@ -497,8 +574,40 @@ export default function Classificacao() {
                     Reabrir competência
                   </Button>
                 )}
+                {profile?.role === "escritorio" && competencia.status === "concluida" && (
+                  <Button
+                    size="sm"
+                    onClick={handleExportar}
+                    disabled={exportandoLoading}
+                    className="bg-brand text-brand-foreground hover:bg-brand/90"
+                  >
+                    {exportandoLoading
+                      ? <Loader2 className="h-4 w-4 animate-spin" />
+                      : <FileText className="h-4 w-4" />}
+                    Exportar TXT Domínio
+                  </Button>
+                )}
+                {profile?.role === "escritorio" && competencia.status === "exportada" && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleExportar}
+                    disabled={exportandoLoading}
+                  >
+                    {exportandoLoading
+                      ? <Loader2 className="h-4 w-4 animate-spin" />
+                      : <Download className="h-4 w-4" />}
+                    Re-exportar TXT
+                  </Button>
+                )}
               </div>
             </div>
+
+            {competencia.status === "exportada" && competencia.exportada_em && (
+              <p className="text-xs text-muted-foreground">
+                Última exportação: {formatDateTimeBR(competencia.exportada_em)}
+              </p>
+            )}
 
             {competencia.status !== "exportada" && (
               <div className="flex items-end justify-between gap-6">
@@ -828,6 +937,40 @@ export default function Classificacao() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* NFs pendentes (export) */}
+        <Dialog
+          open={!!pendentes}
+          onOpenChange={(o) => { if (!o) { setPendentes(null); setTipoPendencia(null); } }}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {tipoPendencia === "ibge"
+                  ? "Há prestadores sem código IBGE"
+                  : "Há notas pendentes de classificação"}
+              </DialogTitle>
+              <DialogDescription>
+                {tipoPendencia === "ibge"
+                  ? "Re-importe a planilha ou edite os prestadores abaixo antes de exportar."
+                  : "Classifique as notas abaixo antes de exportar."}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="max-h-80 overflow-auto rounded-lg border bg-muted/20 p-3 space-y-1">
+              {(pendentes ?? []).map((p, i) => (
+                <p key={i} className="text-sm font-mono">{p}</p>
+              ))}
+            </div>
+            <DialogFooter>
+              <Button
+                onClick={() => { setPendentes(null); setTipoPendencia(null); }}
+                className="bg-brand text-brand-foreground hover:bg-brand/90"
+              >
+                Voltar à classificação
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </TooltipProvider>
   );
