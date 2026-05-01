@@ -457,6 +457,7 @@ export default function Classificacao() {
         if (body?.pendentes?.length) {
           setPendentesLista(body.pendentes ?? []);
           setPendentesTipo(body.tipo_pendencia ?? "classificacao");
+          setPendentesModalOpen(true);
           return;
         }
         toast.error("Algo precisa de atenção", {
