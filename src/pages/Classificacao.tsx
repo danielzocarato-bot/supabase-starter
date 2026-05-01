@@ -78,6 +78,7 @@ type Competencia = {
   total_notas: number;
   notas_classificadas: number;
   arquivo_origem: string | null;
+  exportada_em: string | null;
 };
 type Cliente = { id: string; razao_social: string; cnpj: string };
 
