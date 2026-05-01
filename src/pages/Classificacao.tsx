@@ -417,6 +417,64 @@ export default function Classificacao() {
     toast.success("Competência reaberta.");
   };
 
+  // Exportar TXT Domínio (somente escritório)
+  const handleExportar = async () => {
+    if (!competencia || !cliente) return;
+    setExportandoLoading(true);
+    try {
+      const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
+      const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
+      const { data: sessionRes } = await supabase.auth.getSession();
+      const token = sessionRes.session?.access_token;
+      if (!token) {
+        toast.error("Algo precisa de atenção", { description: "Sessão expirada." });
+        return;
+      }
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/gerar-txt-dominio`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+          "apikey": SUPABASE_PUBLISHABLE_KEY,
+        },
+        body: JSON.stringify({ competencia_id: competencia.id }),
+      });
+      if (!res.ok) {
+        let body: any = null;
+        try { body = await res.json(); } catch {}
+        if (body?.pendentes?.length) {
+          setPendentes(body.pendentes);
+          setTipoPendencia(body.tipo_pendencia ?? "classificacao");
+          return;
+        }
+        toast.error("Algo precisa de atenção", {
+          description: body?.error ?? "Falha na exportação.",
+        });
+        return;
+      }
+      const blob = await res.blob();
+      const cnpjDigits = (cliente.cnpj ?? "").replace(/\D/g, "");
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `dominio_${cnpjDigits}_${competencia.periodo}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      setCompetencia({
+        ...competencia,
+        status: "exportada",
+        exportada_em: new Date().toISOString(),
+      });
+      toast.success("Arquivo gerado e pronto para importação no Domínio.");
+    } catch (e: any) {
+      toast.error("Algo precisa de atenção", { description: e?.message ?? "Falha na exportação." });
+    } finally {
+      setExportandoLoading(false);
+    }
+  };
+
   // -------- Render --------
   if (loading) {
     return (
