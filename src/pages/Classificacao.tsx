@@ -433,9 +433,9 @@ export default function Classificacao() {
                 {formatPeriodo(competencia.periodo)}
               </h1>
               <div className="flex items-center gap-3">
-                <StatusBadge status={competencia.status} />
+                <StatusCompetenciaBadge status={competencia.status} />
                 <AnimatePresence>
-                  {showSaveIndicator && (
+                  {showSaveIndicator && competencia.status === "aberta" && (
                     <motion.div
                       initial={{ opacity: 0, y: -4 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -447,48 +447,57 @@ export default function Classificacao() {
                     </motion.div>
                   )}
                 </AnimatePresence>
-              </div>
-            </div>
-
-            <div className="flex items-end justify-between gap-6">
-              <div className="flex-1 min-w-0 space-y-1.5">
-                <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                  <motion.div
-                    className="h-full bg-brand"
-                    initial={{ width: 0 }}
-                    animate={{ width: `${pct}%` }}
-                    transition={{ duration: 0.4, ease: "easeOut" }}
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground tabular-nums">
-                  {totalClassificadas} de {totalClassificavel} classificadas
-                </p>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="text-3xl font-display font-semibold tabular-nums leading-none">
-                  {Math.round(pct)}%
-                </div>
-                {podeConcluir && (
-                  <motion.div
-                    initial={{ scale: 0.85, opacity: 0 }}
-                    animate={{ scale: [0.85, 1.05, 1], opacity: 1 }}
-                    transition={{ duration: 0.4 }}
+                {competencia.status === "concluida" && profile?.role === "escritorio" && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setConfirmReabrirOpen(true)}
+                    className="text-muted-foreground hover:text-foreground"
                   >
-                    <Button
-                      size="lg"
-                      className="bg-brand text-brand-foreground hover:bg-brand/90"
-                      onClick={() =>
-                        toast.message("Função disponível na Parte 3.", {
-                          description: "Vamos ligar o fluxo de conclusão em seguida.",
-                        })
-                      }
-                    >
-                      Concluir competência
-                    </Button>
-                  </motion.div>
+                    <Undo2 className="h-3.5 w-3.5" />
+                    Reabrir competência
+                  </Button>
                 )}
               </div>
             </div>
+
+            {competencia.status !== "exportada" && (
+              <div className="flex items-end justify-between gap-6">
+                <div className="flex-1 min-w-0 space-y-1.5">
+                  <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                    <motion.div
+                      className="h-full bg-brand"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${pct}%` }}
+                      transition={{ duration: 0.4, ease: "easeOut" }}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground tabular-nums">
+                    {totalClassificadas} de {totalClassificavel} classificadas
+                  </p>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="text-3xl font-display font-semibold tabular-nums leading-none">
+                    {Math.round(pct)}%
+                  </div>
+                  {podeConcluir && (
+                    <motion.div
+                      initial={{ scale: 0.85, opacity: 0 }}
+                      animate={{ scale: [0.85, 1.05, 1], opacity: 1 }}
+                      transition={{ duration: 0.4 }}
+                    >
+                      <Button
+                        size="lg"
+                        className="bg-brand text-brand-foreground hover:bg-brand/90"
+                        onClick={() => setConfirmConcluirOpen(true)}
+                      >
+                        Concluir competência
+                      </Button>
+                    </motion.div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
