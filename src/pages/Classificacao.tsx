@@ -941,31 +941,28 @@ export default function Classificacao() {
         </AlertDialog>
 
         {/* NFs pendentes (export) */}
-        <Dialog
-          open={!!pendentes}
-          onOpenChange={(o) => { if (!o) { setPendentesLista(null ?? []); setPendentesTipo(null); } }}
-        >
+        <Dialog open={pendentesModalOpen} onOpenChange={setPendentesModalOpen}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>
-                {tipoPendencia === "ibge"
+                {pendentesTipo === "ibge"
                   ? "Há prestadores sem código IBGE"
                   : "Há notas pendentes de classificação"}
               </DialogTitle>
               <DialogDescription>
-                {tipoPendencia === "ibge"
-                  ? "Re-importe a planilha ou edite os prestadores abaixo antes de exportar."
+                {pendentesTipo === "ibge"
+                  ? "Algumas notas têm prestadores sem o código IBGE do município. Tente re-importar a planilha (a app vai consultar a Receita Federal novamente) ou ajuste manualmente o município do prestador antes de exportar."
                   : "Classifique as notas abaixo antes de exportar."}
               </DialogDescription>
             </DialogHeader>
             <div className="max-h-80 overflow-auto rounded-lg border bg-muted/20 p-3 space-y-1">
-              {(pendentes ?? []).map((p, i) => (
+              {pendentesLista.map((p, i) => (
                 <p key={i} className="text-sm font-mono">{p}</p>
               ))}
             </div>
             <DialogFooter>
               <Button
-                onClick={() => { setPendentesLista(null ?? []); setPendentesTipo(null); }}
+                onClick={() => setPendentesModalOpen(false)}
                 className="bg-brand text-brand-foreground hover:bg-brand/90"
               >
                 Voltar à classificação
