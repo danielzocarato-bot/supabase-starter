@@ -17,6 +17,7 @@ import ImportarPlanilha from "./pages/escritorio/ImportarPlanilha";
 import ClienteCompetencias from "./pages/cliente/Competencias";
 import Classificacao from "./pages/Classificacao";
 import Placeholder from "./pages/Placeholder";
+import Unsubscribe from "./pages/Unsubscribe";
 
 const queryClient = new QueryClient();
 
@@ -32,6 +33,7 @@ const App = () => (
               <Route path="/" element={<Navigate to="/login" replace />} />
               <Route path="/login" element={<Login />} />
               <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/unsubscribe" element={<Unsubscribe />} />
 
               <Route path="/app/escritorio" element={<RequireRole role="escritorio"><DashboardEscritorio /></RequireRole>} />
               <Route path="/app/escritorio/clientes" element={<RequireRole role="escritorio"><ClientesEscritorio /></RequireRole>} />
