@@ -74,6 +74,23 @@ Deno.serve(async (req) => {
   const origin = req.headers.get("origin") ?? "";
   const redirectTo = origin ? `${origin}/reset-password` : undefined;
 
+  // Helper: localiza user existente por email
+  async function buscarUserPorEmail(targetEmail: string): Promise<string | null> {
+    let page = 1;
+    while (page <= 20) {
+      const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 200 });
+      if (error || !data?.users?.length) return null;
+      const found = data.users.find((u) => (u.email ?? "").toLowerCase() === targetEmail);
+      if (found) return found.id;
+      if (data.users.length < 200) return null;
+      page++;
+    }
+    return null;
+  }
+
+  let userId: string | null = null;
+  let convitePendente = false;
+
   const { data: inv, error: invErr } = await admin.auth.admin.inviteUserByEmail(email, {
     redirectTo,
     data: { cliente_id, nome, role },
@@ -81,13 +98,41 @@ Deno.serve(async (req) => {
 
   if (invErr || !inv?.user) {
     const msg = (invErr?.message ?? "").toLowerCase();
-    if (msg.includes("already") || msg.includes("registered") || msg.includes("exists")) {
-      return json({ ok: false, error: "Este email já está em uso." }, 409);
+    const jaExiste = msg.includes("already") || msg.includes("registered") || msg.includes("exists");
+    if (!jaExiste) {
+      return json({ ok: false, error: invErr?.message ?? "Falha ao enviar convite." }, 400);
     }
-    return json({ ok: false, error: invErr?.message ?? "Falha ao enviar convite." }, 400);
+
+    // Usuário já existe: localiza, vincula perfil e reenvia link de convite
+    userId = await buscarUserPorEmail(email);
+    if (!userId) {
+      return json({ ok: false, error: "Este email já está em uso, mas não foi possível localizar o usuário." }, 409);
+    }
+
+    // Verifica se já está confirmado — se sim, não dá pra reenviar convite
+    const { data: existingUser } = await admin.auth.admin.getUserById(userId);
+    const jaConfirmado = !!existingUser?.user?.email_confirmed_at;
+
+    if (!jaConfirmado) {
+      // Reenvia link de convite
+      const { error: linkErr } = await admin.auth.admin.generateLink({
+        type: "invite",
+        email,
+        options: { redirectTo, data: { cliente_id, nome, role } },
+      });
+      if (linkErr) {
+        return json({ ok: false, error: `Falha ao reenviar convite: ${linkErr.message}` }, 400);
+      }
+      convitePendente = true;
+    } else {
+      // Já confirmado: apenas vincula o perfil (sem reenviar convite)
+      convitePendente = false;
+    }
+  } else {
+    userId = inv.user.id;
+    convitePendente = true;
   }
 
-  const userId = inv.user.id;
   const { error: updErr } = await admin
     .from("profiles")
     .update({
@@ -98,8 +143,13 @@ Deno.serve(async (req) => {
     .eq("id", userId);
 
   if (updErr) {
-    return json({ ok: false, error: `Convite enviado, mas falha ao vincular perfil: ${updErr.message}` }, 207);
+    return json({ ok: false, error: `Operação concluída parcialmente: ${updErr.message}` }, 207);
   }
 
-  return json({ ok: true, user_id: userId });
+  return json({
+    ok: true,
+    user_id: userId,
+    reenviado: convitePendente,
+    ja_confirmado: !convitePendente,
+  });
 });
