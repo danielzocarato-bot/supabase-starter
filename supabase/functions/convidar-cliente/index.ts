@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createClient } from "npm:@supabase/supabase-js@2.105.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -38,13 +38,15 @@ Deno.serve(async (req) => {
     global: { headers: { Authorization: `Bearer ${token}` } },
   });
 
-  const { data: userRes, error: userErr } = await userClient.auth.getUser();
-  if (userErr || !userRes?.user) return json({ ok: false, error: "Sessão inválida." }, 401);
+  // Valida o JWT criptograficamente (não depende de sessão server-side ativa)
+  const { data: claimsRes, error: claimsErr } = await userClient.auth.getClaims(token);
+  const callerId = claimsRes?.claims?.sub as string | undefined;
+  if (claimsErr || !callerId) return json({ ok: false, error: "Sessão inválida." }, 401);
 
   const { data: profile, error: profileErr } = await userClient
     .from("profiles")
     .select("role")
-    .eq("id", userRes.user.id)
+    .eq("id", callerId)
     .maybeSingle();
   if (profileErr || profile?.role !== "escritorio") {
     return json({ ok: false, error: "Apenas escritório pode convidar usuários." }, 403);
