@@ -780,6 +780,54 @@ export default function Classificacao() {
           nota={drawerNota}
           onClose={() => setDrawerNotaId(null)}
         />
+
+        {/* Confirmar conclusão */}
+        <AlertDialog open={confirmConcluirOpen} onOpenChange={setConfirmConcluirOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Concluir competência?</AlertDialogTitle>
+              <AlertDialogDescription>
+                {profile?.role === "cliente"
+                  ? "Ao marcar como concluída, sua contabilidade será notificada para gerar o arquivo de importação. Quer prosseguir?"
+                  : "Ao concluir, esta competência ficará disponível para exportação no formato Domínio. Você poderá reabrir caso precise ajustar."}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={acaoLoading}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                disabled={acaoLoading}
+                onClick={(e) => { e.preventDefault(); handleConcluir(); }}
+                className="bg-brand text-brand-foreground hover:bg-brand/90"
+              >
+                {acaoLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+                Concluir
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Confirmar reabertura (escritório) */}
+        <AlertDialog open={confirmReabrirOpen} onOpenChange={setConfirmReabrirOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Reabrir esta competência?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Os usuários cliente poderão classificar novamente.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={acaoLoading}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                disabled={acaoLoading}
+                onClick={(e) => { e.preventDefault(); handleReabrir(); }}
+                className="bg-brand text-brand-foreground hover:bg-brand/90"
+              >
+                {acaoLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+                Reabrir
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </TooltipProvider>
   );
