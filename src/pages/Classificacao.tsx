@@ -28,12 +28,17 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import {
   ArrowLeft, Check, CheckCircle2, ChevronLeft, ChevronRight, ChevronsUpDown,
-  Loader2, Search, X,
+  Loader2, Search, Undo2, X,
 } from "lucide-react";
 import { formatCNPJ } from "@/lib/format";
+import { StatusCompetenciaBadge } from "@/components/StatusCompetenciaBadge";
 
 const MESES_PT = [
   "Janeiro","Fevereiro","Março","Abril","Maio","Junho",
@@ -103,15 +108,6 @@ type Nota = {
   raw_data: any;
 };
 
-function StatusBadge({ status }: { status: CompetenciaStatus }) {
-  if (status === "exportada") {
-    return <Badge variant="outline" className="bg-success/10 text-success border-success/30">Exportada</Badge>;
-  }
-  if (status === "concluida") {
-    return <Badge variant="outline" className="bg-brand-soft text-brand border-brand/20">Classificação validada</Badge>;
-  }
-  return <Badge variant="secondary">Aberta</Badge>;
-}
 
 export default function Classificacao() {
   const { id } = useParams<{ id: string }>();
