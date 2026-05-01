@@ -153,18 +153,33 @@ Deno.serve(async (req) => {
 
   if (notasErr) return json({ ok: false, error: `Falha ao carregar notas: ${notasErr.message}` }, 500);
 
-  // 4. Pendentes (não-canceladas sem acumulador)
-  const pendentes: string[] = [];
+  // 4. Pendentes — agrupa em duas categorias
+  const pendentesClassificacao: string[] = [];
+  const pendentesIBGE: string[] = [];
   for (const n of notas ?? []) {
-    if (!n.cancelada && !n.acumulador_id) {
-      pendentes.push(`NF ${n.numero_nfe ?? "?"} - ${n.prestador_razao ?? "Sem prestador"}`);
+    if (n.cancelada) continue;
+    if (!n.acumulador_id) {
+      pendentesClassificacao.push(`NF ${n.numero_nfe ?? "?"} - ${n.prestador_razao ?? "Sem prestador"}`);
+    }
+    const ibge = (n.prestador_municipio_ibge ?? "").toString().trim();
+    if (!/^\d+$/.test(ibge) || ibge.length === 0) {
+      pendentesIBGE.push(`NF ${n.numero_nfe ?? "?"} - ${n.prestador_razao ?? "Sem prestador"} (${n.prestador_cnpj ?? "sem CNPJ"})`);
     }
   }
-  if (pendentes.length > 0) {
+  if (pendentesClassificacao.length > 0) {
     return json({
       ok: false,
       error: "Há notas pendentes de classificação.",
-      pendentes,
+      pendentes: pendentesClassificacao,
+      tipo_pendencia: "classificacao",
+    }, 400);
+  }
+  if (pendentesIBGE.length > 0) {
+    return json({
+      ok: false,
+      error: "Há prestadores sem código IBGE do município. Re-importe a planilha ou edite manualmente antes de exportar.",
+      pendentes: pendentesIBGE,
+      tipo_pendencia: "ibge",
     }, 400);
   }
 
