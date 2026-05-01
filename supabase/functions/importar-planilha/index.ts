@@ -77,6 +77,13 @@ function digitsOnly(v: string): string {
   return (v ?? "").replace(/\D/g, "");
 }
 
+function formatPeriodoLabel(p: string): string {
+  const meses = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+  const m = p.match(/^(\d{4})-(\d{2})$/);
+  if (!m) return p;
+  return `${meses[parseInt(m[2],10)-1]} / ${m[1]}`;
+}
+
 async function fetchEmpresaBrasilAPI(cnpj: string): Promise<{ endereco: string | null; ibge: string | null } | null> {
   try {
     const r = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`, {
