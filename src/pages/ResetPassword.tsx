@@ -45,6 +45,23 @@ export default function ResetPassword() {
         return;
       }
 
+      // 2.5) Fallback: processar #access_token diretamente se ainda não há sessão
+      if (!sessAtual) {
+        const hashParams2 = new URLSearchParams(window.location.hash.startsWith("#") ? window.location.hash.slice(1) : "");
+        const accessToken = hashParams2.get("access_token");
+        const refreshToken = hashParams2.get("refresh_token");
+        if (accessToken && refreshToken) {
+          const { error: setErr } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+          if (!setErr) {
+            if (!cancelado) setStatus("pronto");
+            return;
+          }
+        }
+      }
+
       // 3) URL com ?code=... (PKCE)
       const code = searchParams.get("code");
       if (code) {
