@@ -288,7 +288,7 @@ Deno.serve(async (req) => {
   const bytes = toLatin1Bytes(conteudo);
 
   // 5. Atualiza status
-  const novoStatus = comp.status === "concluida" ? "exportada" : "exportada";
+  const novoStatus = "exportada";
   const updatePayload: Record<string, unknown> = {
     status: novoStatus,
     exportada_em: new Date().toISOString(),
