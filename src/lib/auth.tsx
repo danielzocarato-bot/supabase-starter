@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Session, User } from "@supabase/supabase-js";
 
@@ -21,7 +21,12 @@ interface AuthCtx {
   refreshProfile: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthCtx | undefined>(undefined);
+// HMR-resistant: reuse the same context instance across hot reloads
+const __AUTH_CTX_KEY = "__acrux_auth_ctx__";
+const __g = globalThis as unknown as Record<string, unknown>;
+const AuthContext: React.Context<AuthCtx | undefined> =
+  (__g[__AUTH_CTX_KEY] as React.Context<AuthCtx | undefined>) ??
+  ((__g[__AUTH_CTX_KEY] = createContext<AuthCtx | undefined>(undefined)) as React.Context<AuthCtx | undefined>);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
