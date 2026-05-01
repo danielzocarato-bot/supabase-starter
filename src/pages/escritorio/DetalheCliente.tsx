@@ -1076,3 +1076,194 @@ function ConvidarModal({
     </Dialog>
   );
 }
+
+// ============================================================
+// Aba Competências
+// ============================================================
+type CompetenciaRow = {
+  id: string;
+  periodo: string;
+  status: "aberta" | "concluida" | "exportada";
+  total_notas: number;
+  notas_classificadas: number;
+  created_at: string;
+  exportada_em: string | null;
+  concluida_em: string | null;
+};
+
+const MESES_PT = [
+  "Janeiro","Fevereiro","Março","Abril","Maio","Junho",
+  "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro",
+];
+
+function formatPeriodo(p: string) {
+  const m = p.match(/^(\d{4})-(\d{2})$/);
+  if (!m) return p;
+  return `${MESES_PT[parseInt(m[2], 10) - 1]} / ${m[1]}`;
+}
+
+function StatusCompetenciaBadge({ status }: { status: CompetenciaRow["status"] }) {
+  if (status === "exportada") {
+    return (
+      <Badge variant="outline" className="bg-success/10 text-success border-success/30">
+        Exportada
+      </Badge>
+    );
+  }
+  if (status === "concluida") {
+    return (
+      <Badge variant="outline" className="bg-brand-soft text-brand border-brand/20">
+        Classificação validada
+      </Badge>
+    );
+  }
+  return <Badge variant="secondary">Aberta</Badge>;
+}
+
+function AbaCompetencias({ clienteId }: { clienteId: string }) {
+  const nav = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const destacar = searchParams.get("destacar");
+
+  const [loading, setLoading] = useState(true);
+  const [comps, setComps] = useState<CompetenciaRow[]>([]);
+  const [highlightId, setHighlightId] = useState<string | null>(null);
+
+  const carregar = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("competencias")
+      .select("id, periodo, status, total_notas, notas_classificadas, created_at, exportada_em, concluida_em")
+      .eq("cliente_id", clienteId)
+      .order("periodo", { ascending: false });
+    if (error) toast.error("Algo precisa de atenção", { description: error.message });
+    setComps((data ?? []) as CompetenciaRow[]);
+    setLoading(false);
+  };
+
+  useEffect(() => { carregar(); /* eslint-disable-next-line */ }, [clienteId]);
+
+  // Destaque temporário da competência recém-importada
+  useEffect(() => {
+    if (!destacar || loading) return;
+    if (!comps.some((c) => c.id === destacar)) return;
+    setHighlightId(destacar);
+    const t = setTimeout(() => {
+      setHighlightId(null);
+      const sp = new URLSearchParams(searchParams);
+      sp.delete("destacar");
+      setSearchParams(sp, { replace: true });
+    }, 3000);
+    return () => clearTimeout(t);
+  }, [destacar, loading, comps, searchParams, setSearchParams]);
+
+  const irImportar = () =>
+    nav("/app/escritorio/importar", { state: { cliente_id: clienteId } });
+
+  if (loading) {
+    return (
+      <Card className="p-12 rounded-xl flex items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </Card>
+    );
+  }
+
+  if (comps.length === 0) {
+    return (
+      <Card className="p-12 rounded-xl text-center space-y-5">
+        <div className="h-14 w-14 rounded-full bg-muted mx-auto flex items-center justify-center">
+          <FileSpreadsheet className="h-7 w-7 text-muted-foreground" />
+        </div>
+        <p className="text-muted-foreground max-w-md mx-auto">
+          Nenhuma competência importada ainda. Carregue a primeira planilha mensal para começar a classificar.
+        </p>
+        <Button
+          onClick={irImportar}
+          className="bg-brand text-brand-foreground hover:bg-brand/90"
+        >
+          <Upload className="h-4 w-4" />
+          Importar primeira competência
+        </Button>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground">
+          {comps.length} {comps.length === 1 ? "competência cadastrada" : "competências cadastradas"}.
+        </p>
+        <Button
+          onClick={irImportar}
+          className="bg-brand text-brand-foreground hover:bg-brand/90"
+        >
+          <Plus className="h-4 w-4" />
+          Importar competência
+        </Button>
+      </div>
+
+      <Card className="rounded-xl overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Período</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Notas</TableHead>
+              <TableHead>Classificadas</TableHead>
+              <TableHead>Importada em</TableHead>
+              <TableHead className="text-right">Ações</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {comps.map((c) => {
+              const total = c.total_notas ?? 0;
+              const classif = c.notas_classificadas ?? 0;
+              const pct = total > 0 ? (classif / total) * 100 : 0;
+              const isHighlight = highlightId === c.id;
+              return (
+                <motion.tr
+                  key={c.id}
+                  initial={isHighlight ? { backgroundColor: "hsl(var(--brand-soft) / 0.5)" } : false}
+                  animate={isHighlight
+                    ? { backgroundColor: ["hsl(var(--brand-soft) / 0.5)", "hsl(var(--brand-soft) / 0)"] }
+                    : { backgroundColor: "hsl(var(--brand-soft) / 0)" }}
+                  transition={{ duration: 3, ease: "easeOut" }}
+                  className="border-b last:border-b-0"
+                >
+                  <TableCell className="font-medium">{formatPeriodo(c.periodo)}</TableCell>
+                  <TableCell><StatusCompetenciaBadge status={c.status} /></TableCell>
+                  <TableCell className="text-right tabular-nums">{total}</TableCell>
+                  <TableCell>
+                    <div className="relative inline-flex items-center justify-center min-w-[88px] h-7 px-3 rounded overflow-hidden bg-muted/40">
+                      <div
+                        className="absolute inset-y-0 left-0 bg-brand-soft transition-all"
+                        style={{ width: `${pct}%` }}
+                      />
+                      <span className="relative tabular-nums text-sm">
+                        {classif} / {total}
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-sm">
+                    {new Date(c.created_at).toLocaleDateString("pt-BR")}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => nav(`/app/escritorio/competencias/${c.id}`)}
+                    >
+                      Abrir
+                      <ArrowRight className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                </motion.tr>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </Card>
+    </div>
+  );
+}
