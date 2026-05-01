@@ -36,6 +36,23 @@ async function copyTreePatched(src: string, dst: string) {
 }
 await copyTreePatched(SRC_SHARED, BUILD_DIR);
 
+// Adiciona tsconfig.json no BUILD_DIR para forçar JSX classic em todos sub-arquivos
+fs.writeFileSync(
+  path.join(BUILD_DIR, "tsconfig.json"),
+  JSON.stringify({
+    compilerOptions: {
+      jsx: "react",
+      jsxFactory: "React.createElement",
+      jsxFragmentFactory: "React.Fragment",
+      esModuleInterop: true,
+      target: "es2020",
+      module: "esnext",
+      moduleResolution: "bundler",
+      allowImportingTsExtensions: true,
+    },
+  }, null, 2),
+);
+
 // 2) Lista entrypoints e bundla cada um
 const entries = [
   { name: "auth-signup", file: "email-templates/signup.tsx", export: "SignupEmail", props: {
