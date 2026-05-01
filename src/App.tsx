@@ -15,6 +15,7 @@ import NovoCliente from "./pages/escritorio/NovoCliente";
 import DetalheCliente from "./pages/escritorio/DetalheCliente";
 import ImportarPlanilha from "./pages/escritorio/ImportarPlanilha";
 import ClienteCompetencias from "./pages/cliente/Competencias";
+import Classificacao from "./pages/Classificacao";
 import Placeholder from "./pages/Placeholder";
 
 const queryClient = new QueryClient();
@@ -37,7 +38,8 @@ const App = () => (
               <Route path="/app/escritorio/clientes/novo" element={<RequireRole role="escritorio"><NovoCliente /></RequireRole>} />
               <Route path="/app/escritorio/clientes/:id" element={<RequireRole role="escritorio"><DetalheCliente /></RequireRole>} />
               <Route path="/app/escritorio/importar" element={<RequireRole role="escritorio"><ImportarPlanilha /></RequireRole>} />
-              <Route path="/app/escritorio/competencias/:id" element={<RequireRole role="escritorio"><Placeholder titulo="Tela de Classificação" descricao="Em construção (Fase 4)." /></RequireRole>} />
+              <Route path="/app/escritorio/competencias/:id" element={<RequireRole role="escritorio"><Classificacao /></RequireRole>} />
+              <Route path="/app/cliente/competencias/:id" element={<RequireRole role="cliente"><Classificacao /></RequireRole>} />
               <Route path="/app/escritorio/usuarios" element={<RequireRole role="escritorio"><Placeholder titulo="Usuários" /></RequireRole>} />
               <Route path="/app/escritorio/configuracoes" element={<RequireRole role="escritorio"><Placeholder titulo="Configurações" /></RequireRole>} />
 
