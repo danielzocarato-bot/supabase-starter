@@ -69,7 +69,7 @@ export default function Login() {
     }
     if (data === true) {
       toast.success("Promoção concluída. Carregando seu painel…");
-      window.location.replace("/login");
+      window.location.replace("/app/escritorio");
     }
   };
 
