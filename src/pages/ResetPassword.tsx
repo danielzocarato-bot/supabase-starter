@@ -23,13 +23,12 @@ export default function ResetPassword() {
     let cancelado = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
 
-    // 0) Se a URL traz erro do Supabase no hash (#error=access_denied&error_code=otp_expired)
+    // 0) Mantém o hash disponível, mas só considera erro depois de tentar
+    // recuperar a sessão. Alguns clientes de email disparam uma segunda
+    // validação do link e deixam #error na URL mesmo após a sessão válida
+    // já ter sido criada no navegador do usuário.
     const hash = window.location.hash.startsWith("#") ? window.location.hash.slice(1) : "";
     const hashParams = new URLSearchParams(hash);
-    if (hashParams.get("error")) {
-      setStatus("invalido");
-      return;
-    }
 
     // 1) Instala listener ANTES de qualquer coisa async
     const { data: sub } = supabase.auth.onAuthStateChange((event, sess) => {
@@ -67,10 +66,29 @@ export default function ResetPassword() {
         }
       }
 
-      // 5) Aguarda até 8s pelo evento async (detectSessionInUrl pode demorar)
+      // 5) Antes de invalidar, revalida a sessão uma última vez.
+      const { data: { session: s3 } } = await supabase.auth.getSession();
+      if (s3) {
+        if (!cancelado) setStatus("pronto");
+        return;
+      }
+
+      // 6) Aguarda até 8s pelo evento async (detectSessionInUrl pode demorar)
       timer = setTimeout(async () => {
         const { data: { session: s2 } } = await supabase.auth.getSession();
-        if (!cancelado && !s2) setStatus("invalido");
+        if (cancelado) return;
+
+        if (s2) {
+          setStatus("pronto");
+          return;
+        }
+
+        if (hashParams.get("error")) {
+          setStatus("invalido");
+          return;
+        }
+
+        setStatus("invalido");
       }, 8000);
     };
     estabelecer();
