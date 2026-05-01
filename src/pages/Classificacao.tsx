@@ -32,10 +32,13 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import {
   ArrowLeft, Check, CheckCircle2, ChevronLeft, ChevronRight, ChevronsUpDown,
-  Loader2, Search, Undo2, X,
+  Download, FileText, Loader2, Search, Undo2, X,
 } from "lucide-react";
 import { formatCNPJ } from "@/lib/format";
 import { StatusCompetenciaBadge } from "@/components/StatusCompetenciaBadge";
