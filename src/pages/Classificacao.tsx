@@ -432,7 +432,7 @@ export default function Classificacao() {
   // Exportar TXT Domínio (somente escritório)
   const handleExportar = async () => {
     if (!competencia || !cliente) return;
-    setExportandoLoading(true);
+    setExportando(true);
     try {
       const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
       const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
@@ -455,8 +455,8 @@ export default function Classificacao() {
         let body: any = null;
         try { body = await res.json(); } catch {}
         if (body?.pendentes?.length) {
-          setPendentes(body.pendentes);
-          setTipoPendencia(body.tipo_pendencia ?? "classificacao");
+          setPendentesLista(body.pendentes ?? []);
+          setPendentesTipo(body.tipo_pendencia ?? "classificacao");
           return;
         }
         toast.error("Algo precisa de atenção", {
@@ -483,7 +483,7 @@ export default function Classificacao() {
     } catch (e: any) {
       toast.error("Algo precisa de atenção", { description: e?.message ?? "Falha na exportação." });
     } finally {
-      setExportandoLoading(false);
+      setExportando(false);
     }
   };
 
@@ -579,10 +579,10 @@ export default function Classificacao() {
                   <Button
                     size="sm"
                     onClick={handleExportar}
-                    disabled={exportandoLoading}
+                    disabled={exportando}
                     className="bg-brand text-brand-foreground hover:bg-brand/90"
                   >
-                    {exportandoLoading
+                    {exportando
                       ? <Loader2 className="h-4 w-4 animate-spin" />
                       : <FileText className="h-4 w-4" />}
                     Exportar TXT Domínio
@@ -593,9 +593,9 @@ export default function Classificacao() {
                     variant="outline"
                     size="sm"
                     onClick={handleExportar}
-                    disabled={exportandoLoading}
+                    disabled={exportando}
                   >
-                    {exportandoLoading
+                    {exportando
                       ? <Loader2 className="h-4 w-4 animate-spin" />
                       : <Download className="h-4 w-4" />}
                     Re-exportar TXT
@@ -942,7 +942,7 @@ export default function Classificacao() {
         {/* NFs pendentes (export) */}
         <Dialog
           open={!!pendentes}
-          onOpenChange={(o) => { if (!o) { setPendentes(null); setTipoPendencia(null); } }}
+          onOpenChange={(o) => { if (!o) { setPendentesLista(null ?? []); setPendentesTipo(null); } }}
         >
           <DialogContent>
             <DialogHeader>
@@ -964,7 +964,7 @@ export default function Classificacao() {
             </div>
             <DialogFooter>
               <Button
-                onClick={() => { setPendentes(null); setTipoPendencia(null); }}
+                onClick={() => { setPendentesLista(null ?? []); setPendentesTipo(null); }}
                 className="bg-brand text-brand-foreground hover:bg-brand/90"
               >
                 Voltar à classificação
