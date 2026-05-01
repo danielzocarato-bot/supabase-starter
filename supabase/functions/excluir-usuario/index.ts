@@ -30,11 +30,16 @@ Deno.serve(async (req) => {
     global: { headers: { Authorization: `Bearer ${token}` } },
   });
 
-  const { data: userRes, error: userErr } = await userClient.auth.getUser();
-  if (userErr || !userRes?.user) return json({ ok: false, error: "Sessão inválida." }, 401);
+  // Valida o JWT criptograficamente (não depende da sessão server-side existir).
+  // getUser() falharia com "session_not_found" se a sessão tiver sido revogada,
+  // mesmo com um token ainda dentro da validade.
+  const { data: claimsRes, error: claimsErr } = await userClient.auth.getClaims(token);
+  const sub = claimsRes?.claims?.sub as string | undefined;
+  if (claimsErr || !sub) return json({ ok: false, error: "Sessão inválida." }, 401);
+  const callerId = sub;
 
   const { data: profile } = await userClient
-    .from("profiles").select("role").eq("id", userRes.user.id).maybeSingle();
+    .from("profiles").select("role").eq("id", callerId).maybeSingle();
   if (profile?.role !== "escritorio") {
     return json({ ok: false, error: "Apenas escritório pode excluir usuários." }, 403);
   }
@@ -46,7 +51,7 @@ Deno.serve(async (req) => {
   if (!userId) return json({ ok: false, error: "user_id é obrigatório." }, 400);
 
   // Não deixa o usuário excluir a si mesmo
-  if (userId === userRes.user.id) {
+  if (userId === callerId) {
     return json({ ok: false, error: "Você não pode excluir a si mesmo." }, 400);
   }
 
