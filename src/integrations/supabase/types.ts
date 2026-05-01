@@ -424,6 +424,19 @@ export type Database = {
           read_ct: number
         }[]
       }
+      usuarios_com_status: {
+        Args: never
+        Returns: {
+          cliente_id: string
+          cliente_razao: string
+          created_at: string
+          email: string
+          email_confirmed_at: string
+          id: string
+          nome: string
+          role: Database["public"]["Enums"]["user_role"]
+        }[]
+      }
     }
     Enums: {
       competencia_status: "aberta" | "concluida" | "exportada"
