@@ -27,10 +27,10 @@ export default function Login() {
   }, []);
 
   useEffect(() => {
-    if (!authLoading && user && profile) {
+    if (!authLoading && user && profile && existeEscritorio !== false) {
       nav(profile.role === "escritorio" ? "/app/escritorio" : "/app/cliente", { replace: true });
     }
-  }, [user, profile, authLoading, nav]);
+  }, [user, profile, authLoading, nav, existeEscritorio]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,7 +69,7 @@ export default function Login() {
     }
     if (data === true) {
       toast.success("Promoção concluída. Carregando seu painel…");
-      window.location.replace("/login");
+      window.location.replace("/app/escritorio");
     }
   };
 
