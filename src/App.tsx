@@ -12,6 +12,7 @@ import NotFound from "./pages/NotFound";
 import DashboardEscritorio from "./pages/escritorio/Dashboard";
 import ClientesEscritorio from "./pages/escritorio/Clientes";
 import NovoCliente from "./pages/escritorio/NovoCliente";
+import DetalheCliente from "./pages/escritorio/DetalheCliente";
 import ClienteCompetencias from "./pages/cliente/Competencias";
 import Placeholder from "./pages/Placeholder";
 
@@ -33,7 +34,7 @@ const App = () => (
               <Route path="/app/escritorio" element={<RequireRole role="escritorio"><DashboardEscritorio /></RequireRole>} />
               <Route path="/app/escritorio/clientes" element={<RequireRole role="escritorio"><ClientesEscritorio /></RequireRole>} />
               <Route path="/app/escritorio/clientes/novo" element={<RequireRole role="escritorio"><NovoCliente /></RequireRole>} />
-              <Route path="/app/escritorio/clientes/:id" element={<RequireRole role="escritorio"><Placeholder titulo="Detalhe do Cliente" descricao="Será construído na próxima parte da Fase 2." /></RequireRole>} />
+              <Route path="/app/escritorio/clientes/:id" element={<RequireRole role="escritorio"><DetalheCliente /></RequireRole>} />
               <Route path="/app/escritorio/importar" element={<RequireRole role="escritorio"><Placeholder titulo="Importar Planilha" /></RequireRole>} />
               <Route path="/app/escritorio/usuarios" element={<RequireRole role="escritorio"><Placeholder titulo="Usuários" /></RequireRole>} />
               <Route path="/app/escritorio/configuracoes" element={<RequireRole role="escritorio"><Placeholder titulo="Configurações" /></RequireRole>} />
