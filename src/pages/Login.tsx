@@ -14,9 +14,11 @@ import { Loader2 } from "lucide-react";
 export default function Login() {
   const nav = useNavigate();
   const { user, profile, loading: authLoading } = useAuth();
-  const [mode, setMode] = useState<"login" | "forgot">("login");
+  const [mode, setMode] = useState<"login" | "forgot" | "bootstrap">("login");
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
+  const [nome, setNome] = useState("");
+  const [confirmar, setConfirmar] = useState("");
   const [loading, setLoading] = useState(false);
   const [existeEscritorio, setExisteEscritorio] = useState<boolean | null>(null);
 
