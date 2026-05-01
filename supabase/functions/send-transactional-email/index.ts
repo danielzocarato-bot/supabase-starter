@@ -15,6 +15,9 @@ const SENDER_DOMAIN = "notify.classifica.acrux-group.com.br"
 // even though actual sending uses the subdomain above.
 const FROM_DOMAIN = "classifica.acrux-group.com.br"
 
+// Reply-to: provisório. Trocar para contato@acrux-group.com.br quando o email institucional for criado.
+const REPLY_TO = "daniel.zocarato@gmail.com"
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers':
