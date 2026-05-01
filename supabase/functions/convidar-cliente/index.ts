@@ -133,6 +133,24 @@ Deno.serve(async (req) => {
     convitePendente = true;
   }
 
+
+  // === Bloqueio de segurança ===
+  // Se o user já existe e tem role='escritorio', NÃO sobrescreva.
+  // Apenas escritórios podem convidar, e nunca devem poder rebaixar outro escritório.
+  const { data: profileExistente } = await admin
+    .from("profiles")
+    .select("role")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (profileExistente?.role === "escritorio") {
+    return json({
+      ok: false,
+      error: "Este email já está em uso por um usuário do escritório. Não é possível vinculá-lo como cliente.",
+    }, 409);
+  }
+
+  // === UPDATE original ===
   const { error: updErr } = await admin
     .from("profiles")
     .update({
