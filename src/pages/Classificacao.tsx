@@ -563,8 +563,40 @@ export default function Classificacao() {
                     Reabrir competência
                   </Button>
                 )}
+                {profile?.role === "escritorio" && competencia.status === "concluida" && (
+                  <Button
+                    size="sm"
+                    onClick={handleExportar}
+                    disabled={exportandoLoading}
+                    className="bg-brand text-brand-foreground hover:bg-brand/90"
+                  >
+                    {exportandoLoading
+                      ? <Loader2 className="h-4 w-4 animate-spin" />
+                      : <FileText className="h-4 w-4" />}
+                    Exportar TXT Domínio
+                  </Button>
+                )}
+                {profile?.role === "escritorio" && competencia.status === "exportada" && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleExportar}
+                    disabled={exportandoLoading}
+                  >
+                    {exportandoLoading
+                      ? <Loader2 className="h-4 w-4 animate-spin" />
+                      : <Download className="h-4 w-4" />}
+                    Re-exportar TXT
+                  </Button>
+                )}
               </div>
             </div>
+
+            {competencia.status === "exportada" && competencia.exportada_em && (
+              <p className="text-xs text-muted-foreground">
+                Última exportação: {formatDateTimeBR(competencia.exportada_em)}
+              </p>
+            )}
 
             {competencia.status !== "exportada" && (
               <div className="flex items-end justify-between gap-6">
