@@ -576,30 +576,27 @@ export default function Classificacao() {
                     Reabrir competência
                   </Button>
                 )}
-                {profile?.role === "escritorio" && competencia.status === "concluida" && (
+                {profile?.role === "escritorio" &&
+                  (competencia.status === "concluida" || competencia.status === "exportada") && (
                   <Button
                     size="sm"
                     onClick={handleExportar}
                     disabled={exportando}
-                    className="bg-brand text-brand-foreground hover:bg-brand/90"
-                  >
-                    {exportando
-                      ? <Loader2 className="h-4 w-4 animate-spin" />
-                      : <FileText className="h-4 w-4" />}
-                    Exportar TXT Domínio
-                  </Button>
-                )}
-                {profile?.role === "escritorio" && competencia.status === "exportada" && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleExportar}
-                    disabled={exportando}
+                    variant={competencia.status === "exportada" ? "outline" : "default"}
+                    className={
+                      competencia.status === "exportada"
+                        ? ""
+                        : "bg-brand text-brand-foreground hover:bg-brand/90"
+                    }
                   >
                     {exportando
                       ? <Loader2 className="h-4 w-4 animate-spin" />
                       : <Download className="h-4 w-4" />}
-                    Re-exportar TXT
+                    {exportando
+                      ? "Processando…"
+                      : competencia.status === "exportada"
+                        ? "Re-exportar TXT"
+                        : "Exportar TXT Domínio"}
                   </Button>
                 )}
               </div>
