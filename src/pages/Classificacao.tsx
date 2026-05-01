@@ -28,12 +28,17 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import {
   ArrowLeft, Check, CheckCircle2, ChevronLeft, ChevronRight, ChevronsUpDown,
-  Loader2, Search, X,
+  Loader2, Search, Undo2, X,
 } from "lucide-react";
 import { formatCNPJ } from "@/lib/format";
+import { StatusCompetenciaBadge } from "@/components/StatusCompetenciaBadge";
 
 const MESES_PT = [
   "Janeiro","Fevereiro","Março","Abril","Maio","Junho",
@@ -103,15 +108,6 @@ type Nota = {
   raw_data: any;
 };
 
-function StatusBadge({ status }: { status: CompetenciaStatus }) {
-  if (status === "exportada") {
-    return <Badge variant="outline" className="bg-success/10 text-success border-success/30">Exportada</Badge>;
-  }
-  if (status === "concluida") {
-    return <Badge variant="outline" className="bg-brand-soft text-brand border-brand/20">Classificação validada</Badge>;
-  }
-  return <Badge variant="secondary">Aberta</Badge>;
-}
 
 export default function Classificacao() {
   const { id } = useParams<{ id: string }>();
@@ -138,6 +134,9 @@ export default function Classificacao() {
   const [pisca, setPisca] = useState<Set<string>>(new Set());
   const [ultimoSave, setUltimoSave] = useState<number | null>(null);
   const [showSaveIndicator, setShowSaveIndicator] = useState(false);
+  const [confirmConcluirOpen, setConfirmConcluirOpen] = useState(false);
+  const [confirmReabrirOpen, setConfirmReabrirOpen] = useState(false);
+  const [acaoLoading, setAcaoLoading] = useState(false);
 
   // Debounce busca
   useEffect(() => {
@@ -371,6 +370,45 @@ export default function Classificacao() {
     [drawerNotaId, notas],
   );
 
+  // Concluir / Reabrir competência
+  const handleConcluir = async () => {
+    if (!competencia) return;
+    setAcaoLoading(true);
+    const { error } = await supabase
+      .from("competencias")
+      .update({ status: "concluida", concluida_em: new Date().toISOString() })
+      .eq("id", competencia.id);
+    setAcaoLoading(false);
+    if (error) {
+      toast.error("Algo precisa de atenção", { description: error.message });
+      return;
+    }
+    setCompetencia({ ...competencia, status: "concluida" });
+    setConfirmConcluirOpen(false);
+    if (profile?.role === "cliente") {
+      toast.success("Classificação validada com segurança.");
+    } else {
+      toast.success("Competência marcada como concluída.");
+    }
+  };
+
+  const handleReabrir = async () => {
+    if (!competencia) return;
+    setAcaoLoading(true);
+    const { error } = await supabase
+      .from("competencias")
+      .update({ status: "aberta", concluida_em: null })
+      .eq("id", competencia.id);
+    setAcaoLoading(false);
+    if (error) {
+      toast.error("Algo precisa de atenção", { description: error.message });
+      return;
+    }
+    setCompetencia({ ...competencia, status: "aberta" });
+    setConfirmReabrirOpen(false);
+    toast.success("Competência reaberta.");
+  };
+
   // -------- Render --------
   if (loading) {
     return (
@@ -434,9 +472,9 @@ export default function Classificacao() {
                 {formatPeriodo(competencia.periodo)}
               </h1>
               <div className="flex items-center gap-3">
-                <StatusBadge status={competencia.status} />
+                <StatusCompetenciaBadge status={competencia.status} />
                 <AnimatePresence>
-                  {showSaveIndicator && (
+                  {showSaveIndicator && competencia.status === "aberta" && (
                     <motion.div
                       initial={{ opacity: 0, y: -4 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -448,48 +486,57 @@ export default function Classificacao() {
                     </motion.div>
                   )}
                 </AnimatePresence>
-              </div>
-            </div>
-
-            <div className="flex items-end justify-between gap-6">
-              <div className="flex-1 min-w-0 space-y-1.5">
-                <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                  <motion.div
-                    className="h-full bg-brand"
-                    initial={{ width: 0 }}
-                    animate={{ width: `${pct}%` }}
-                    transition={{ duration: 0.4, ease: "easeOut" }}
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground tabular-nums">
-                  {totalClassificadas} de {totalClassificavel} classificadas
-                </p>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="text-3xl font-display font-semibold tabular-nums leading-none">
-                  {Math.round(pct)}%
-                </div>
-                {podeConcluir && (
-                  <motion.div
-                    initial={{ scale: 0.85, opacity: 0 }}
-                    animate={{ scale: [0.85, 1.05, 1], opacity: 1 }}
-                    transition={{ duration: 0.4 }}
+                {competencia.status === "concluida" && profile?.role === "escritorio" && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setConfirmReabrirOpen(true)}
+                    className="text-muted-foreground hover:text-foreground"
                   >
-                    <Button
-                      size="lg"
-                      className="bg-brand text-brand-foreground hover:bg-brand/90"
-                      onClick={() =>
-                        toast.message("Função disponível na Parte 3.", {
-                          description: "Vamos ligar o fluxo de conclusão em seguida.",
-                        })
-                      }
-                    >
-                      Concluir competência
-                    </Button>
-                  </motion.div>
+                    <Undo2 className="h-3.5 w-3.5" />
+                    Reabrir competência
+                  </Button>
                 )}
               </div>
             </div>
+
+            {competencia.status !== "exportada" && (
+              <div className="flex items-end justify-between gap-6">
+                <div className="flex-1 min-w-0 space-y-1.5">
+                  <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                    <motion.div
+                      className="h-full bg-brand"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${pct}%` }}
+                      transition={{ duration: 0.4, ease: "easeOut" }}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground tabular-nums">
+                    {totalClassificadas} de {totalClassificavel} classificadas
+                  </p>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="text-3xl font-display font-semibold tabular-nums leading-none">
+                    {Math.round(pct)}%
+                  </div>
+                  {podeConcluir && (
+                    <motion.div
+                      initial={{ scale: 0.85, opacity: 0 }}
+                      animate={{ scale: [0.85, 1.05, 1], opacity: 1 }}
+                      transition={{ duration: 0.4 }}
+                    >
+                      <Button
+                        size="lg"
+                        className="bg-brand text-brand-foreground hover:bg-brand/90"
+                        onClick={() => setConfirmConcluirOpen(true)}
+                      >
+                        Concluir competência
+                      </Button>
+                    </motion.div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -733,6 +780,54 @@ export default function Classificacao() {
           nota={drawerNota}
           onClose={() => setDrawerNotaId(null)}
         />
+
+        {/* Confirmar conclusão */}
+        <AlertDialog open={confirmConcluirOpen} onOpenChange={setConfirmConcluirOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Concluir competência?</AlertDialogTitle>
+              <AlertDialogDescription>
+                {profile?.role === "cliente"
+                  ? "Ao marcar como concluída, sua contabilidade será notificada para gerar o arquivo de importação. Quer prosseguir?"
+                  : "Ao concluir, esta competência ficará disponível para exportação no formato Domínio. Você poderá reabrir caso precise ajustar."}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={acaoLoading}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                disabled={acaoLoading}
+                onClick={(e) => { e.preventDefault(); handleConcluir(); }}
+                className="bg-brand text-brand-foreground hover:bg-brand/90"
+              >
+                {acaoLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+                Concluir
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Confirmar reabertura (escritório) */}
+        <AlertDialog open={confirmReabrirOpen} onOpenChange={setConfirmReabrirOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Reabrir esta competência?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Os usuários cliente poderão classificar novamente.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={acaoLoading}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                disabled={acaoLoading}
+                onClick={(e) => { e.preventDefault(); handleReabrir(); }}
+                className="bg-brand text-brand-foreground hover:bg-brand/90"
+              >
+                {acaoLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+                Reabrir
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </TooltipProvider>
   );
