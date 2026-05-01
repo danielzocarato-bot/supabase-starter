@@ -90,7 +90,14 @@ async function fetchEmpresaBrasilAPI(cnpj: string): Promise<{ endereco: string |
       d.complemento,
       d.bairro,
     ].filter((x: any) => x && String(x).trim() !== "");
-    const endereco = partes.length > 0 ? partes.join(", ") : null;
+    let endereco = partes.length > 0 ? partes.join(", ") : null;
+    if (d.cep) {
+      const cep = String(d.cep).replace(/\D/g, "");
+      if (cep.length === 8) {
+        const cepFmt = `${cep.slice(0, 5)}-${cep.slice(5)}`;
+        endereco = endereco ? `${endereco}, CEP ${cepFmt}` : `CEP ${cepFmt}`;
+      }
+    }
     const ibge = d.codigo_municipio_ibge ? String(d.codigo_municipio_ibge) : (d.codigo_municipio ? String(d.codigo_municipio) : null);
     return { endereco, ibge };
   } catch {
