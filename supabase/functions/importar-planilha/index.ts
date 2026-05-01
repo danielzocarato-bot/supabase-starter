@@ -356,6 +356,52 @@ Deno.serve(async (req) => {
     }
   }
 
+
+  // Notifica usuários cliente — não bloqueante
+  try {
+    const { data: clientesUsers } = await admin
+      .from("profiles")
+      .select("email, nome")
+      .eq("cliente_id", cliente_id)
+      .eq("role", "cliente");
+
+    const { data: cli } = await admin
+      .from("clientes")
+      .select("razao_social")
+      .eq("id", cliente_id)
+      .maybeSingle();
+
+    const appOrigin = Deno.env.get("APP_ORIGIN") ?? "https://classifica.acrux-group.com.br";
+    const periodoLabel = formatPeriodoLabel(periodo);
+    const ctaUrl = `${appOrigin}/app/cliente/competencias/${competencia_id}`;
+    const totalNotas = registros.length;
+
+    for (const u of clientesUsers ?? []) {
+      if (!u.email) continue;
+      try {
+        await admin.functions.invoke("send-transactional-email", {
+          body: {
+            templateName: "competencia-pronta",
+            recipientEmail: u.email,
+            idempotencyKey: `pronta-${competencia_id}-${u.email}`,
+            templateData: {
+              nome: u.nome ?? null,
+              razaoSocial: cli?.razao_social ?? "Sua contabilidade",
+              periodoLabel,
+              totalNotas,
+              ctaUrl,
+            },
+          },
+        });
+      } catch (sendErr) {
+        console.error("[importar-planilha] Falha ao enviar email para", u.email, sendErr);
+      }
+    }
+  } catch (e) {
+    console.error("[importar-planilha] Falha ao notificar clientes:", e);
+    // Não bloqueia
+  }
+
   return json({
     ok: true,
     competencia_id,
