@@ -161,7 +161,7 @@ export default function Classificacao() {
       setLoading(true);
       const compReq = supabase
         .from("competencias")
-        .select("id, cliente_id, periodo, status, total_notas, notas_classificadas, arquivo_origem, clientes(id, razao_social, cnpj)")
+        .select("id, cliente_id, periodo, status, total_notas, notas_classificadas, arquivo_origem, exportada_em, clientes(id, razao_social, cnpj)")
         .eq("id", id)
         .maybeSingle();
       const notasReq = supabase
@@ -187,6 +187,7 @@ export default function Classificacao() {
         total_notas: cd.total_notas,
         notas_classificadas: cd.notas_classificadas,
         arquivo_origem: cd.arquivo_origem,
+        exportada_em: cd.exportada_em,
       };
       const cli: Cliente | null = cd.clientes
         ? { id: cd.clientes.id, razao_social: cd.clientes.razao_social, cnpj: cd.clientes.cnpj }
