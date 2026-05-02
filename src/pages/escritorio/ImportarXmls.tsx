@@ -456,7 +456,26 @@ export default function ImportarXmls() {
                 </div>
               )}
 
-              {/* Tipo de operação */}
+              {/* Toggle Upload / SIEG */}
+              {!semNFeConfigurada && (
+                <Tabs value={modo} onValueChange={(v) => setModo(v as "upload" | "sieg")}>
+                  <TabsList className="grid grid-cols-2 w-full">
+                    <TabsTrigger value="upload">
+                      <Upload className="h-4 w-4 mr-2" />
+                      Upload manual
+                    </TabsTrigger>
+                    <TabsTrigger value="sieg">
+                      <Cloud className="h-4 w-4 mr-2" />
+                      Buscar do SIEG
+                    </TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="upload" className="space-y-6 mt-4" />
+                  <TabsContent value="sieg" className="space-y-6 mt-4" />
+                </Tabs>
+              )}
+
+              {/* Tipo de operação (compartilhado) */}
               <div className="space-y-2">
                 <Label htmlFor="tipo">Tipo de operação</Label>
                 <Select
@@ -479,7 +498,7 @@ export default function ImportarXmls() {
                 </Select>
               </div>
 
-              {/* Período */}
+              {/* Período (compartilhado) */}
               <div className="space-y-2">
                 <Label htmlFor="periodo">Competência</Label>
                 <Input
@@ -496,82 +515,133 @@ export default function ImportarXmls() {
                 )}
               </div>
 
-              {/* Arquivos */}
-              <div className="space-y-2">
-                <Label>Arquivos XML</Label>
-                <div
-                  onDragOver={(e) => { if (!semNFeConfigurada) { e.preventDefault(); setDrag(true); } }}
-                  onDragLeave={() => setDrag(false)}
-                  onDrop={onDrop}
-                  onClick={() => !semNFeConfigurada && fileInputRef.current?.click()}
-                  className={`relative border-2 border-dashed rounded-xl p-8 text-center transition-colors ${
-                    semNFeConfigurada
-                      ? "border-border bg-muted/20 cursor-not-allowed opacity-60"
-                      : drag
-                      ? "border-brand bg-brand-soft/30 cursor-pointer"
-                      : arquivos.length > 0
-                      ? "border-brand/40 bg-brand-soft/10 cursor-pointer"
-                      : "border-border hover:border-brand/40 hover:bg-muted/40 cursor-pointer"
-                  }`}
-                >
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".xml,.zip,.rar,.7z"
-                    multiple
-                    className="hidden"
-                    onChange={(e) => adicionarArquivos(e.target.files)}
-                    disabled={semNFeConfigurada}
-                  />
-                  <div className="flex flex-col items-center gap-2">
-                    <Upload className="h-10 w-10 text-muted-foreground" />
-                    <p className="text-sm">
-                      <span className="font-medium text-foreground">Arraste arquivos aqui</span>{" "}
-                      <span className="text-muted-foreground">ou clique para escolher</span>
-                    </p>
-                    <p className="text-xs text-muted-foreground">.xml, .zip, .rar ou .7z — até 100 MB no total</p>
-                  </div>
-                </div>
-
-                {arquivos.length > 0 && (
-                  <div className="mt-3 space-y-1.5">
-                    <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
-                      <span>{arquivos.length} arquivo(s) selecionado(s)</span>
-                      <span>{formatBytes(totalBytes)} / 100 MB</span>
+              {/* Conteúdo específico do modo */}
+              {modo === "upload" ? (
+                <>
+                  {/* Arquivos */}
+                  <div className="space-y-2">
+                    <Label>Arquivos XML</Label>
+                    <div
+                      onDragOver={(e) => { if (!semNFeConfigurada) { e.preventDefault(); setDrag(true); } }}
+                      onDragLeave={() => setDrag(false)}
+                      onDrop={onDrop}
+                      onClick={() => !semNFeConfigurada && fileInputRef.current?.click()}
+                      className={`relative border-2 border-dashed rounded-xl p-8 text-center transition-colors ${
+                        semNFeConfigurada
+                          ? "border-border bg-muted/20 cursor-not-allowed opacity-60"
+                          : drag
+                          ? "border-brand bg-brand-soft/30 cursor-pointer"
+                          : arquivos.length > 0
+                          ? "border-brand/40 bg-brand-soft/10 cursor-pointer"
+                          : "border-border hover:border-brand/40 hover:bg-muted/40 cursor-pointer"
+                      }`}
+                    >
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept=".xml,.zip,.rar,.7z"
+                        multiple
+                        className="hidden"
+                        onChange={(e) => adicionarArquivos(e.target.files)}
+                        disabled={semNFeConfigurada}
+                      />
+                      <div className="flex flex-col items-center gap-2">
+                        <Upload className="h-10 w-10 text-muted-foreground" />
+                        <p className="text-sm">
+                          <span className="font-medium text-foreground">Arraste arquivos aqui</span>{" "}
+                          <span className="text-muted-foreground">ou clique para escolher</span>
+                        </p>
+                        <p className="text-xs text-muted-foreground">.xml, .zip, .rar ou .7z — até 100 MB no total</p>
+                      </div>
                     </div>
-                    <ul className="rounded-lg border border-border divide-y divide-border max-h-56 overflow-auto">
-                      {arquivos.map((f, idx) => (
-                        <li key={`${f.name}-${idx}`} className="flex items-center gap-3 px-3 py-2 text-sm">
-                          <FileCode2 className="h-4 w-4 text-brand shrink-0" />
-                          <span className="flex-1 truncate">{f.name}</span>
-                          <span className="text-xs text-muted-foreground shrink-0">{formatBytes(f.size)}</span>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => { e.stopPropagation(); removerArquivo(idx); }}
-                            className="h-7 px-2 text-muted-foreground hover:text-danger"
-                            aria-label={`Remover ${f.name}`}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
 
-              <div className="flex items-center justify-end gap-3 pt-2">
-                <Button
-                  onClick={handleSubmit}
-                  disabled={!podeSubmeterUpload}
-                  className="bg-brand text-brand-foreground hover:bg-brand/90"
-                >
-                  {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-                  {submitting ? "Processando…" : "Importar"}
-                </Button>
-              </div>
+                    {arquivos.length > 0 && (
+                      <div className="mt-3 space-y-1.5">
+                        <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
+                          <span>{arquivos.length} arquivo(s) selecionado(s)</span>
+                          <span>{formatBytes(totalBytes)} / 100 MB</span>
+                        </div>
+                        <ul className="rounded-lg border border-border divide-y divide-border max-h-56 overflow-auto">
+                          {arquivos.map((f, idx) => (
+                            <li key={`${f.name}-${idx}`} className="flex items-center gap-3 px-3 py-2 text-sm">
+                              <FileCode2 className="h-4 w-4 text-brand shrink-0" />
+                              <span className="flex-1 truncate">{f.name}</span>
+                              <span className="text-xs text-muted-foreground shrink-0">{formatBytes(f.size)}</span>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => { e.stopPropagation(); removerArquivo(idx); }}
+                                className="h-7 px-2 text-muted-foreground hover:text-danger"
+                                aria-label={`Remover ${f.name}`}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-end gap-3 pt-2">
+                    <Button
+                      onClick={handleSubmit}
+                      disabled={!podeSubmeterUpload}
+                      className="bg-brand text-brand-foreground hover:bg-brand/90"
+                    >
+                      {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
+                      {submitting ? "Processando…" : "Importar"}
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Filtro de data SIEG */}
+                  <div className="space-y-2">
+                    <Label>Filtro de data</Label>
+                    <RadioGroup
+                      value={siegFiltroData}
+                      onValueChange={(v) => setSiegFiltroData(v as "emissao" | "upload")}
+                      className="flex flex-col sm:flex-row gap-3 sm:gap-6 mt-2"
+                      disabled={semNFeConfigurada}
+                    >
+                      <div className="flex items-center gap-2">
+                        <RadioGroupItem value="emissao" id="filtro-emissao" />
+                        <Label htmlFor="filtro-emissao" className="cursor-pointer font-normal">
+                          Por data de emissão
+                        </Label>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <RadioGroupItem value="upload" id="filtro-upload" />
+                        <Label htmlFor="filtro-upload" className="cursor-pointer font-normal">
+                          Por data de upload no SIEG
+                        </Label>
+                      </div>
+                    </RadioGroup>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      "Emissão" busca pela data fiscal da nota. "Upload" busca pela data em que a nota foi
+                      enviada para o Cofre SIEG.
+                    </p>
+                  </div>
+
+                  <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-xs text-muted-foreground">
+                    A busca acontece direto no Cofre SIEG do escritório usando a API Key configurada em
+                    Configurações → Escritório.
+                  </div>
+
+                  <div className="flex items-center justify-end gap-3 pt-2">
+                    <Button
+                      onClick={handleBuscarSieg}
+                      disabled={!podeSubmeterSieg}
+                      className="bg-brand text-brand-foreground hover:bg-brand/90"
+                    >
+                      {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                      {submitting ? "Processando…" : "Buscar XMLs no SIEG"}
+                    </Button>
+                  </div>
+                </>
+              )}
             </Card>
           </motion.div>
         ) : (
