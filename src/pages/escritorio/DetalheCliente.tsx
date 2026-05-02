@@ -1088,11 +1088,18 @@ type CompetenciaRow = {
   id: string;
   periodo: string;
   status: "aberta" | "concluida" | "exportada";
+  tipo: "nfse_tomada" | "nfe_entrada" | "nfe_saida";
   total_notas: number;
   notas_classificadas: number;
   created_at: string;
   exportada_em: string | null;
   concluida_em: string | null;
+};
+
+const TIPO_LABEL: Record<CompetenciaRow["tipo"], string> = {
+  nfse_tomada: "NFSe — Tomada",
+  nfe_entrada: "NF-e Entrada",
+  nfe_saida: "NF-e Saída",
 };
 
 const MESES_PT = [
