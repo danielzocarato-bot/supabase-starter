@@ -177,6 +177,8 @@ export type Database = {
           id: number
           reply_to_email: string | null
           sieg_api_key: string | null
+          sieg_email: string | null
+          sieg_password: string | null
           telefone: string | null
           updated_at: string | null
           updated_by: string | null
@@ -187,6 +189,8 @@ export type Database = {
           id?: number
           reply_to_email?: string | null
           sieg_api_key?: string | null
+          sieg_email?: string | null
+          sieg_password?: string | null
           telefone?: string | null
           updated_at?: string | null
           updated_by?: string | null
@@ -197,6 +201,8 @@ export type Database = {
           id?: number
           reply_to_email?: string | null
           sieg_api_key?: string | null
+          sieg_email?: string | null
+          sieg_password?: string | null
           telefone?: string | null
           updated_at?: string | null
           updated_by?: string | null

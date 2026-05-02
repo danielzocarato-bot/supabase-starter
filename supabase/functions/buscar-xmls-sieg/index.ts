@@ -27,6 +27,13 @@ function ultimoDiaMes(ano: number, mes: number): number {
 }
 
 interface SiegBody {
+  ApiKey?: string;
+  Email?: string;
+  Senha?: string;
+  User?: string;
+  Usuario?: string;
+  Username?: string;
+  Password?: string;
   XmlType: number;
   Take: number;
   Skip: number;
@@ -39,15 +46,28 @@ interface SiegBody {
   Downloadevent?: boolean;
 }
 
-async function fetchSiegBatch(apiKey: string, body: SiegBody): Promise<string[]> {
-  const url = `${SIEG_URL}?api_key=${encodeURIComponent(apiKey)}`;
+async function fetchSiegBatch(
+  creds: { apiKey: string; email: string; password: string },
+  body: SiegBody,
+): Promise<string[]> {
+  const url = SIEG_URL;
   const res = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "Accept": "application/json",
+      "x-api-key": creds.apiKey,
     },
-    body: JSON.stringify({ ...body, ApiKey: apiKey }),
+    body: JSON.stringify({
+      ...body,
+      ApiKey: creds.apiKey,
+      Email: creds.email,
+      Senha: creds.password,
+      User: creds.email,
+      Usuario: creds.email,
+      Username: creds.email,
+      Password: creds.password,
+    }),
   });
 
   if (!res.ok) {
@@ -136,14 +156,16 @@ Deno.serve(async (req) => {
   // Carrega API key
   const { data: cfg } = await admin
     .from("configuracoes_escritorio")
-    .select("sieg_api_key")
+    .select("sieg_api_key, sieg_email, sieg_password")
     .eq("id", 1)
     .maybeSingle();
   const apiKey = (cfg?.sieg_api_key ?? "").trim();
-  if (!apiKey) {
+  const email = (cfg?.sieg_email ?? "").trim();
+  const password = (cfg?.sieg_password ?? "").trim();
+  if (!apiKey || !email || !password) {
     return json({
       ok: false,
-      error: "API Key SIEG não configurada. Configure em Configurações → Escritório.",
+      error: "Credenciais SIEG incompletas. Configure API Key, e-mail e senha em Configurações → Escritório.",
     }, 400);
   }
 
@@ -208,7 +230,7 @@ Deno.serve(async (req) => {
     const reqBody = { ...baseBody, Skip: skip };
     let lote: string[] = [];
     try {
-      lote = await fetchSiegBatch(apiKey, reqBody);
+      lote = await fetchSiegBatch({ apiKey, email, password }, reqBody);
     } catch (e: any) {
       if (page === 0) {
         console.error("[buscar-xmls-sieg] Falha primeira chamada:", e?.message);
