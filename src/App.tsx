@@ -16,6 +16,7 @@ import DetalheCliente from "./pages/escritorio/DetalheCliente";
 import ImportarPlanilha from "./pages/escritorio/ImportarPlanilha";
 import ImportarXmls from "./pages/escritorio/ImportarXmls";
 import Usuarios from "./pages/escritorio/Usuarios";
+import Configuracoes from "./pages/escritorio/Configuracoes";
 import ClienteCompetencias from "./pages/cliente/Competencias";
 import Classificacao from "./pages/Classificacao";
 import Placeholder from "./pages/Placeholder";
