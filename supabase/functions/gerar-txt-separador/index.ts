@@ -382,6 +382,32 @@ Deno.serve(async (req) => {
   const tipoSuffix = isEntrada ? "entrada" : "saida";
   const filename = `dominio_nfe_${cnpjEmpresa}_${comp.periodo}_${tipoSuffix}.txt`;
 
+  // Auditoria — registra exportação (não bloqueia em caso de falha)
+  try {
+    const hashSha = await sha256Hex(bytes);
+    const { data: userProfile } = await admin
+      .from("profiles")
+      .select("email, nome")
+      .eq("id", userRes.user.id)
+      .maybeSingle();
+
+    await admin.from("exportacoes").insert({
+      competencia_id,
+      cliente_id: cliente.id,
+      gerado_por: userRes.user.id,
+      gerado_por_email: userProfile?.email,
+      gerado_por_nome: userProfile?.nome,
+      arquivo_nome: filename,
+      formato: "dominio_separador",
+      total_notas: notas?.length ?? 0,
+      total_itens: linhas.length,
+      bytes_size: bytes.length,
+      hash_sha256: hashSha,
+    });
+  } catch (e) {
+    console.error("[gerar-txt-separador] Falha ao registrar auditoria:", e);
+  }
+
   return new Response(bytes, {
     status: 200,
     headers: {
