@@ -338,6 +338,9 @@ Deno.serve(async (req) => {
   const ts = Date.now();
   const xmls: Array<{ name: string; content: string }> = [];
 
+  let containers_descompactados = 0;
+  let formato_falho: string | null = null;
+
   for (const arq of arquivos) {
     const safeName = arq.name.replace(/[^a-zA-Z0-9._-]/g, "_");
     const storagePath = `${cliente_id}/${periodo}/${ts}-${safeName}`;
@@ -350,7 +353,20 @@ Deno.serve(async (req) => {
     }).catch(() => null);
 
     const lower = arq.name.toLowerCase();
-    if (lower.endsWith(".zip")) {
+    let formato: "xml" | "zip" | "rar" | "7z" | "outro" = "outro";
+    if (lower.endsWith(".xml")) formato = "xml";
+    else if (lower.endsWith(".zip")) formato = "zip";
+    else if (lower.endsWith(".rar")) formato = "rar";
+    else if (lower.endsWith(".7z")) formato = "7z";
+
+    if (formato === "xml") {
+      const content = new TextDecoder("utf-8").decode(buf);
+      xmls.push({ name: arq.name, content });
+      continue;
+    }
+
+    if (formato === "zip") {
+      let extraidos = 0;
       try {
         const zip = await JSZip.loadAsync(buf);
         for (const fname of Object.keys(zip.files)) {
@@ -358,15 +374,82 @@ Deno.serve(async (req) => {
           if (entry.dir) continue;
           if (!fname.toLowerCase().endsWith(".xml")) continue;
           const content = await entry.async("string");
+          if (content.length > MAX_EXTRACTED_FILE_BYTES) {
+            console.error(`[importar-xmls-nfe][extract] container=${arq.name} formato=zip lib=jszip arquivo=${fname} ignorado (>50MB)`);
+            continue;
+          }
           xmls.push({ name: fname, content });
+          extraidos++;
         }
-      } catch (e) {
-        console.error("[importar-xmls-nfe] Falha ao descompactar zip", arq.name, e);
+        containers_descompactados++;
+        console.log(`[importar-xmls-nfe][extract] container=${arq.name} formato=zip lib=jszip xmls_extraidos=${extraidos}`);
+      } catch (e: any) {
+        console.error(`[importar-xmls-nfe][extract] container=${arq.name} formato=zip lib=jszip ERRO=${e?.message}`, e?.stack);
       }
-    } else if (lower.endsWith(".xml")) {
-      const content = new TextDecoder("utf-8").decode(buf);
-      xmls.push({ name: arq.name, content });
+      continue;
     }
+
+    if (formato === "rar") {
+      if (!libStatus.unrar.ok || !unrarMod) {
+        console.error(`[importar-xmls-nfe][extract] container=${arq.name} formato=rar lib=node-unrar-js INDISPONIVEL erro_boot=${libStatus.unrar.error}`);
+        formato_falho = "rar";
+        continue;
+      }
+      let extraidos = 0;
+      try {
+        const createExtractor = unrarMod.createExtractorFromData ?? unrarMod.default?.createExtractorFromData;
+        if (!createExtractor) throw new Error("createExtractorFromData não exportado");
+        const extractor = await createExtractor({ data: buf.buffer });
+        const list = extractor.getFileList();
+        const fileHeaders = [...(list.fileHeaders ?? [])];
+        const xmlNames = fileHeaders
+          .filter((h: any) => !h.flags?.directory && h.name?.toLowerCase().endsWith(".xml"))
+          .map((h: any) => h.name);
+        if (xmlNames.length > 0) {
+          const extracted = extractor.extract({ files: xmlNames });
+          for (const file of extracted.files ?? []) {
+            const fname = file.fileHeader?.name ?? "arquivo.xml";
+            const data = file.extraction;
+            if (!data) continue;
+            if (data.byteLength > MAX_EXTRACTED_FILE_BYTES) {
+              console.error(`[importar-xmls-nfe][extract] container=${arq.name} formato=rar arquivo=${fname} ignorado (>50MB)`);
+              continue;
+            }
+            const content = new TextDecoder("utf-8").decode(data);
+            xmls.push({ name: fname, content });
+            extraidos++;
+          }
+        }
+        containers_descompactados++;
+        console.log(`[importar-xmls-nfe][extract] container=${arq.name} formato=rar lib=node-unrar-js xmls_extraidos=${extraidos}`);
+      } catch (e: any) {
+        console.error(`[importar-xmls-nfe][extract] container=${arq.name} formato=rar lib=node-unrar-js ERRO=${e?.message}`, e?.stack);
+        formato_falho = formato_falho ?? "rar";
+      }
+      continue;
+    }
+
+    if (formato === "7z") {
+      if (!libStatus.sevenZip.ok || !sevenZipMod) {
+        console.error(`[importar-xmls-nfe][extract] container=${arq.name} formato=7z lib=7zip-min INDISPONIVEL erro_boot=${libStatus.sevenZip.error}`);
+        formato_falho = formato_falho ?? "7z";
+        continue;
+      }
+      // 7zip-min depende de binário nativo (spawn) — em Deno edge não roda.
+      // Mantemos a tentativa pra logar a falha concreta e sinalizamos formato_falho.
+      try {
+        const sz = sevenZipMod.default ?? sevenZipMod;
+        if (!sz.unpack) throw new Error("unpack não exportado");
+        // Sem filesystem persistente confiável, esta tentativa quase certamente falhará.
+        throw new Error("7zip-min requer binário nativo (spawn child_process), não suportado em Deno edge runtime");
+      } catch (e: any) {
+        console.error(`[importar-xmls-nfe][extract] container=${arq.name} formato=7z lib=7zip-min ERRO=${e?.message}`, e?.stack);
+        formato_falho = formato_falho ?? "7z";
+      }
+      continue;
+    }
+
+    console.error(`[importar-xmls-nfe][extract] container=${arq.name} formato=desconhecido ignorado`);
   }
 
   if (xmls.length === 0) {
