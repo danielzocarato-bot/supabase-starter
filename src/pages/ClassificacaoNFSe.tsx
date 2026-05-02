@@ -162,6 +162,7 @@ export default function ClassificacaoNFSe() {
   const [pendentesLista, setPendentesLista] = useState<string[]>([]);
   const [pendentesTipo, setPendentesTipo] = useState<"classificacao" | "ibge" | null>(null);
   const [excluirOpen, setExcluirOpen] = useState(false);
+  const [historicoOpen, setHistoricoOpen] = useState(false);
 
   // Debounce busca
   useEffect(() => {
