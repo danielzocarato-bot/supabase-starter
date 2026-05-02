@@ -221,18 +221,47 @@ export default function Configuracoes() {
                 {new Date(config.updated_at).toLocaleString("pt-BR")}
               </p>
             )}
+          </Card>
 
-            <div className="flex justify-end pt-2">
-              <Button
-                onClick={handleSalvar}
-                disabled={!dirty || saving}
-                className="bg-brand text-brand-foreground hover:bg-brand/90"
-              >
-                {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                {saving ? "Processando…" : "Salvar alterações"}
-              </Button>
+          {/* Card SIEG */}
+          <Card className="p-6 space-y-5 mt-6">
+            <div>
+              <h2 className="text-lg font-medium">Integração SIEG</h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                Configure sua chave de API SIEG para buscar XMLs diretamente do Cofre, sem upload manual.
+              </p>
+            </div>
+
+            <div>
+              <Label htmlFor="sieg_api_key">API Key SIEG</Label>
+              <Input
+                id="sieg_api_key"
+                type="password"
+                value={form.sieg_api_key}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, sieg_api_key: e.target.value }))
+                }
+                placeholder="••••••••••"
+                className="mt-1 font-mono"
+                autoComplete="off"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Encontre em <strong>Minha Conta → Integrações API SIEG</strong> dentro da plataforma SIEG.
+                Acesso restrito ao administrador da conta.
+              </p>
             </div>
           </Card>
+
+          <div className="flex justify-end pt-4">
+            <Button
+              onClick={handleSalvar}
+              disabled={!dirty || saving}
+              className="bg-brand text-brand-foreground hover:bg-brand/90"
+            >
+              {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              {saving ? "Processando…" : "Salvar alterações"}
+            </Button>
+          </div>
         </TabsContent>
       </Tabs>
     </div>
