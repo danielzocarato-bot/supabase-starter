@@ -1261,14 +1261,32 @@ function AbaCompetencias({ clienteId }: { clienteId: string }) {
                     {new Date(c.created_at).toLocaleDateString("pt-BR")}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => nav(`/app/escritorio/competencias/${c.id}`)}
-                    >
-                      Abrir
-                      <ArrowRight className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => nav(`/app/escritorio/competencias/${c.id}`)}
+                      >
+                        Abrir
+                        <ArrowRight className="h-4 w-4" />
+                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => setExcluindo(c)}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Excluir importação
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </TableCell>
                 </motion.tr>
               );
@@ -1276,6 +1294,19 @@ function AbaCompetencias({ clienteId }: { clienteId: string }) {
           </TableBody>
         </Table>
       </Card>
+
+      {excluindo && (
+        <ExcluirImportacaoDialog
+          open={!!excluindo}
+          onOpenChange={(v) => !v && setExcluindo(null)}
+          competenciaId={excluindo.id}
+          periodoLabel={formatPeriodo(excluindo.periodo)}
+          tipoLabel={TIPO_LABEL[excluindo.tipo]}
+          status={excluindo.status}
+          totalNotas={excluindo.total_notas ?? 0}
+          onExcluido={() => { setExcluindo(null); carregar(); }}
+        />
+      )}
     </div>
   );
 }
