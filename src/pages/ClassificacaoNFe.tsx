@@ -31,7 +31,7 @@ import {
 import { toast } from "sonner";
 import {
   ArrowLeft, ArrowDownToLine, ArrowUpFromLine, CheckCircle2, ChevronDown,
-  ChevronRight, ChevronsUpDown, Download, Eye, Layers, List, Loader2, MoreHorizontal, Search, Trash2, Undo2,
+  ChevronRight, ChevronsUpDown, Download, Eye, History, Layers, List, Loader2, MoreHorizontal, Search, Trash2, Undo2,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -41,6 +41,7 @@ import { formatCNPJ } from "@/lib/format";
 import { useStatusActions } from "@/lib/useStatusActions";
 import { NotaDrawerNFe, type DrawerNota, type DrawerItem } from "@/components/NotaDrawerNFe";
 import { ExcluirImportacaoDialog } from "@/components/ExcluirImportacaoDialog";
+import { HistoricoExportacoes } from "@/components/HistoricoExportacoes";
 
 const MESES_PT = [
   "Janeiro","Fevereiro","Março","Abril","Maio","Junho",
