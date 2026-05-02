@@ -14,6 +14,7 @@ import ClientesEscritorio from "./pages/escritorio/Clientes";
 import NovoCliente from "./pages/escritorio/NovoCliente";
 import DetalheCliente from "./pages/escritorio/DetalheCliente";
 import ImportarPlanilha from "./pages/escritorio/ImportarPlanilha";
+import ImportarXmls from "./pages/escritorio/ImportarXmls";
 import Usuarios from "./pages/escritorio/Usuarios";
 import ClienteCompetencias from "./pages/cliente/Competencias";
 import Classificacao from "./pages/Classificacao";
@@ -41,6 +42,7 @@ const App = () => (
               <Route path="/app/escritorio/clientes/novo" element={<RequireRole role="escritorio"><NovoCliente /></RequireRole>} />
               <Route path="/app/escritorio/clientes/:id" element={<RequireRole role="escritorio"><DetalheCliente /></RequireRole>} />
               <Route path="/app/escritorio/importar" element={<RequireRole role="escritorio"><ImportarPlanilha /></RequireRole>} />
+              <Route path="/app/escritorio/importar-xmls" element={<RequireRole role="escritorio"><ImportarXmls /></RequireRole>} />
               <Route path="/app/escritorio/competencias/:id" element={<RequireRole role="escritorio"><Classificacao /></RequireRole>} />
               <Route path="/app/cliente/competencias/:id" element={<RequireRole role="cliente"><Classificacao /></RequireRole>} />
               <Route path="/app/escritorio/usuarios" element={<RequireRole role="escritorio"><Usuarios /></RequireRole>} />
