@@ -1271,3 +1271,254 @@ function AbaCompetencias({ clienteId }: { clienteId: string }) {
     </div>
   );
 }
+
+// ============================================================
+// Aba Operações — tipos de operação atendidos pelo cliente
+// ============================================================
+type TipoOperacao = "nfse_tomada" | "nfe_entrada" | "nfe_saida";
+
+type OperacaoRow = {
+  cliente_id: string;
+  tipo: TipoOperacao;
+  layout_export: string;
+};
+
+const TIPOS: {
+  key: TipoOperacao;
+  titulo: string;
+  descricao: string;
+  layouts: { value: string; label: string }[];
+}[] = [
+  {
+    key: "nfse_tomada",
+    titulo: "NFSe — Serviços Tomados",
+    descricao: "Notas fiscais de serviço recebidas pelo cliente.",
+    layouts: [{ value: "dominio_leiaute_18", label: "Domínio — Leiaute 18 (Serviços)" }],
+  },
+  {
+    key: "nfe_entrada",
+    titulo: "NF-e — Entrada",
+    descricao: "Mercadorias compradas pelo cliente.",
+    layouts: [{ value: "dominio_separador", label: "Domínio — com Separador" }],
+  },
+  {
+    key: "nfe_saida",
+    titulo: "NF-e — Saída",
+    descricao: "Mercadorias vendidas pelo cliente.",
+    layouts: [{ value: "dominio_separador", label: "Domínio — com Separador" }],
+  },
+];
+
+function AbaOperacoes({ clienteId }: { clienteId: string }) {
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [original, setOriginal] = useState<Record<TipoOperacao, OperacaoRow | null>>({
+    nfse_tomada: null,
+    nfe_entrada: null,
+    nfe_saida: null,
+  });
+  const [estado, setEstado] = useState<Record<TipoOperacao, { ativo: boolean; layout: string }>>({
+    nfse_tomada: { ativo: false, layout: "dominio_leiaute_18" },
+    nfe_entrada: { ativo: false, layout: "dominio_separador" },
+    nfe_saida: { ativo: false, layout: "dominio_separador" },
+  });
+  const [bloqueio, setBloqueio] = useState<{ tipo: TipoOperacao; titulo: string } | null>(null);
+
+  const carregar = async () => {
+    setLoading(true);
+    const { data, error } = await (supabase as any)
+      .from("cliente_operacoes")
+      .select("cliente_id, tipo, layout_export")
+      .eq("cliente_id", clienteId);
+    if (error) {
+      toast.error("Algo precisa de atenção", { description: error.message });
+      setLoading(false);
+      return;
+    }
+    const orig: Record<TipoOperacao, OperacaoRow | null> = {
+      nfse_tomada: null,
+      nfe_entrada: null,
+      nfe_saida: null,
+    };
+    const est = {
+      nfse_tomada: { ativo: false, layout: "dominio_leiaute_18" },
+      nfe_entrada: { ativo: false, layout: "dominio_separador" },
+      nfe_saida: { ativo: false, layout: "dominio_separador" },
+    };
+    (data ?? []).forEach((r: OperacaoRow) => {
+      orig[r.tipo] = r;
+      est[r.tipo] = { ativo: true, layout: r.layout_export };
+    });
+    setOriginal(orig);
+    setEstado(est);
+    setLoading(false);
+  };
+
+  useEffect(() => { carregar(); /* eslint-disable-next-line */ }, [clienteId]);
+
+  const dirty = useMemo(() => {
+    return TIPOS.some(t => {
+      const o = original[t.key];
+      const e = estado[t.key];
+      const eraAtivo = !!o;
+      if (eraAtivo !== e.ativo) return true;
+      if (eraAtivo && o!.layout_export !== e.layout) return true;
+      return false;
+    });
+  }, [original, estado]);
+
+  const handleToggle = async (tipo: TipoOperacao, novo: boolean) => {
+    if (!novo && original[tipo]) {
+      // Verifica se há competências desse tipo
+      const { count, error } = await supabase
+        .from("competencias")
+        .select("id", { count: "exact", head: true })
+        .eq("cliente_id", clienteId)
+        .eq("tipo" as any, tipo as any);
+      if (error) {
+        toast.error("Algo precisa de atenção", { description: error.message });
+        return;
+      }
+      if ((count ?? 0) > 0) {
+        const titulo = TIPOS.find(t => t.key === tipo)!.titulo;
+        setBloqueio({ tipo, titulo });
+        return;
+      }
+    }
+    setEstado(prev => ({ ...prev, [tipo]: { ...prev[tipo], ativo: novo } }));
+  };
+
+  const handleLayout = (tipo: TipoOperacao, layout: string) => {
+    setEstado(prev => ({ ...prev, [tipo]: { ...prev[tipo], layout } }));
+  };
+
+  const handleSalvar = async () => {
+    setSaving(true);
+    try {
+      for (const t of TIPOS) {
+        const o = original[t.key];
+        const e = estado[t.key];
+        const eraAtivo = !!o;
+        if (e.ativo && !eraAtivo) {
+          const { error } = await (supabase as any)
+            .from("cliente_operacoes")
+            .insert({ cliente_id: clienteId, tipo: t.key, layout_export: e.layout });
+          if (error) throw error;
+        } else if (!e.ativo && eraAtivo) {
+          const { error } = await (supabase as any)
+            .from("cliente_operacoes")
+            .delete()
+            .eq("cliente_id", clienteId)
+            .eq("tipo", t.key);
+          if (error) throw error;
+        } else if (e.ativo && eraAtivo && o!.layout_export !== e.layout) {
+          const { error } = await (supabase as any)
+            .from("cliente_operacoes")
+            .update({ layout_export: e.layout })
+            .eq("cliente_id", clienteId)
+            .eq("tipo", t.key);
+          if (error) throw error;
+        }
+      }
+      toast.success("Operações salvas com segurança.");
+      await carregar();
+    } catch (err: any) {
+      toast.error("Algo precisa de atenção", { description: err?.message });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <Card className="p-8 rounded-xl flex items-center justify-center text-muted-foreground">
+        <Loader2 className="h-5 w-5 animate-spin mr-2" /> Processando…
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <Card className="p-6 sm:p-8 rounded-xl space-y-6">
+        <div className="space-y-1">
+          <h3 className="text-lg font-display font-semibold">Tipos de operação atendidos</h3>
+          <p className="text-sm text-muted-foreground">
+            Selecione abaixo os tipos de notas fiscais que este cliente atende.
+          </p>
+        </div>
+
+        <div className="space-y-4">
+          {TIPOS.map(t => {
+            const e = estado[t.key];
+            return (
+              <div key={t.key} className="rounded-lg border p-4 space-y-3">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-1">
+                    <Label className="text-base font-medium">{t.titulo}</Label>
+                    <p className="text-sm text-muted-foreground">{t.descricao}</p>
+                  </div>
+                  <Switch
+                    checked={e.ativo}
+                    onCheckedChange={(v) => handleToggle(t.key, v)}
+                  />
+                </div>
+                {e.ativo && (
+                  <div className="space-y-2 pt-2 border-t">
+                    <Label className="text-xs text-muted-foreground">Layout de exportação</Label>
+                    <select
+                      value={e.layout}
+                      onChange={(ev) => handleLayout(t.key, ev.target.value)}
+                      className="flex h-10 w-full max-w-md rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    >
+                      {t.layouts.map(l => (
+                        <option key={l.value} value={l.value}>{l.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </Card>
+
+      <Card className="p-4 rounded-xl bg-brand/5 border-brand/20">
+        <p className="text-sm text-foreground">
+          Esses tipos definem como a importação de notas fiscais e a exportação de TXT funcionam para este cliente.
+          Você pode ativar mais de um tipo se o cliente atende serviços e mercadorias.
+        </p>
+      </Card>
+
+      <div className="flex justify-end">
+        <Button
+          onClick={handleSalvar}
+          disabled={!dirty || saving}
+          className="bg-brand text-brand-foreground hover:bg-brand/90"
+        >
+          {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+          {saving ? "Processando…" : "Salvar alterações"}
+        </Button>
+      </div>
+
+      <AlertDialog open={!!bloqueio} onOpenChange={(o) => !o && setBloqueio(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Não é possível desativar</AlertDialogTitle>
+            <AlertDialogDescription>
+              Este tipo ({bloqueio?.titulo}) possui competências já cadastradas e não pode ser desativado.
+              Para deixar de atender, remova as competências primeiro.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction
+              onClick={() => setBloqueio(null)}
+              className="bg-brand text-brand-foreground hover:bg-brand/90"
+            >
+              Entendi
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
