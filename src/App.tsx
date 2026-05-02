@@ -47,7 +47,7 @@ const App = () => (
               <Route path="/app/escritorio/competencias/:id" element={<RequireRole role="escritorio"><Classificacao /></RequireRole>} />
               <Route path="/app/cliente/competencias/:id" element={<RequireRole role="cliente"><Classificacao /></RequireRole>} />
               <Route path="/app/escritorio/usuarios" element={<RequireRole role="escritorio"><Usuarios /></RequireRole>} />
-              <Route path="/app/escritorio/configuracoes" element={<RequireRole role="escritorio"><Placeholder titulo="Configurações" /></RequireRole>} />
+              <Route path="/app/escritorio/configuracoes" element={<RequireRole role="escritorio"><Configuracoes /></RequireRole>} />
 
               <Route path="/app/cliente" element={<RequireRole role="cliente"><ClienteCompetencias /></RequireRole>} />
               <Route path="/app/cliente/cadastro" element={<RequireRole role="cliente"><Placeholder titulo="Meu Cadastro" /></RequireRole>} />
