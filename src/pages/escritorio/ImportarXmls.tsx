@@ -39,11 +39,20 @@ type Resultado = {
   falhas_enriquecimento: number;
   containers_descompactados?: number;
   formato_falho?: string | null;
+  fonte?: "upload" | "sieg";
+  total_baixados?: number;
 };
 
-const PASSOS_FAKE = [
+const PASSOS_FAKE_UPLOAD = [
   "Lendo arquivos…",
   "Validando notas fiscais…",
+  "Consultando Receita Federal…",
+];
+
+const PASSOS_FAKE_SIEG = [
+  "Conectando ao SIEG…",
+  "Baixando XMLs do Cofre…",
+  "Processando notas…",
   "Consultando Receita Federal…",
 ];
 
