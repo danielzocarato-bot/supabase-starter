@@ -664,11 +664,20 @@ export default function ImportarXmls() {
                   <p className="text-muted-foreground text-sm mt-1">
                     {clienteSelecionado?.razao_social}
                     {tipo && <> · {TIPO_LABEL_CURTO[tipo as TipoNFe]}</>}
+                    {resultado.fonte === "sieg" && (
+                      <> · <span className="inline-flex items-center gap-1"><Cloud className="h-3.5 w-3.5" />Cofre SIEG</span></>
+                    )}
                   </p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {resultado.fonte === "sieg" && (resultado.total_baixados ?? 0) > 0 && (
+                  <ResumoLinha
+                    label="XMLs baixados do SIEG"
+                    valor={resultado.total_baixados ?? 0}
+                  />
+                )}
                 <ResumoLinha label="Notas processadas" valor={resultado.notas_processadas} />
                 <ResumoLinha label="Itens processados" valor={resultado.itens_processados} />
                 {(resultado.containers_descompactados ?? 0) > 1 && (
