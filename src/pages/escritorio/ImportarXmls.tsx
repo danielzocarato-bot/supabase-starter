@@ -706,7 +706,7 @@ export default function ImportarXmls() {
                     transition={{ duration: 0.2 }}
                     className="text-sm text-muted-foreground"
                   >
-                    {PASSOS_FAKE[progressIdx]}
+                    {(modo === "sieg" ? PASSOS_FAKE_SIEG : PASSOS_FAKE_UPLOAD)[progressIdx]}
                   </motion.p>
                 </AnimatePresence>
               </div>
