@@ -1080,6 +1080,11 @@ export default function ClassificacaoNFSe() {
             nav(`/app/escritorio/clientes/${competencia.cliente_id}?tab=competencias`);
           }}
         />
+        <HistoricoExportacoes
+          open={historicoOpen}
+          onOpenChange={setHistoricoOpen}
+          competenciaId={competencia.id}
+        />
       </div>
     </TooltipProvider>
   );
