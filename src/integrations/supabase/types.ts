@@ -170,6 +170,44 @@ export type Database = {
           },
         ]
       }
+      configuracoes_escritorio: {
+        Row: {
+          endereco_completo: string | null
+          from_name: string | null
+          id: number
+          reply_to_email: string | null
+          telefone: string | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          endereco_completo?: string | null
+          from_name?: string | null
+          id?: number
+          reply_to_email?: string | null
+          telefone?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          endereco_completo?: string | null
+          from_name?: string | null
+          id?: number
+          reply_to_email?: string | null
+          telefone?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "configuracoes_escritorio_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_send_log: {
         Row: {
           created_at: string
