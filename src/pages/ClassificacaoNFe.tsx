@@ -1205,7 +1205,7 @@ function NotaCard({
   const tipoLabel = tipoIsSaida ? "Saída" : "Entrada";
 
   return (
-    <Card className={`rounded-xl overflow-hidden ${cancelada ? "opacity-70" : ""}`}>
+    <Card data-nota-id={grupo.notaId} className={`rounded-xl overflow-hidden ${cancelada ? "opacity-70" : ""}`}>
       <div
         className="flex items-center gap-4 p-4 hover:bg-muted/30 cursor-pointer transition-colors"
         onClick={() => setAberto((v) => !v)}
