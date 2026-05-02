@@ -142,10 +142,51 @@ export default function ClassificacaoNFSe() {
   const [acumuladores, setAcumuladores] = useState<Acumulador[]>([]);
   const [notas, setNotas] = useState<Nota[]>([]);
 
-  // UI state
-  const [filtro, setFiltro] = useState<"todas" | "aguardando" | "classificadas">("todas");
-  const [buscaInput, setBuscaInput] = useState("");
-  const [busca, setBusca] = useState("");
+  // UI state — filtro, busca, ordenação e página persistidos na URL
+  const filtro = ((): "todas" | "aguardando" | "classificadas" => {
+    const f = searchParams.get("filtro");
+    if (f === "aguardando" || f === "classificadas") return f;
+    return "todas";
+  })();
+  const setFiltro = (f: "todas" | "aguardando" | "classificadas") => {
+    const sp = new URLSearchParams(searchParams);
+    if (f === "todas") sp.delete("filtro"); else sp.set("filtro", f);
+    sp.delete("page");
+    setSearchParams(sp, { replace: true });
+  };
+
+  const buscaInput = searchParams.get("q") ?? "";
+  const setBuscaInput = (v: string) => {
+    const sp = new URLSearchParams(searchParams);
+    if (!v) sp.delete("q"); else sp.set("q", v);
+    sp.delete("page");
+    setSearchParams(sp, { replace: true });
+  };
+  const [busca, setBusca] = useState(buscaInput);
+
+  type OrdemCampo = "emissao" | "prestador" | "valor" | "numero";
+  type OrdemDir = "asc" | "desc";
+  const ordemCampo: OrdemCampo = (() => {
+    const s = searchParams.get("sort");
+    if (s === "prestador" || s === "valor" || s === "numero") return s;
+    return "emissao";
+  })();
+  const ordemDir: OrdemDir = searchParams.get("dir") === "desc" ? "desc" : "asc";
+  const setOrdem = (campo: OrdemCampo) => {
+    const sp = new URLSearchParams(searchParams);
+    if (campo === ordemCampo) {
+      sp.set("dir", ordemDir === "asc" ? "desc" : "asc");
+    } else {
+      sp.set("sort", campo);
+      sp.set("dir", "asc");
+    }
+    if (sp.get("sort") === "emissao" && sp.get("dir") === "asc") {
+      sp.delete("sort");
+      sp.delete("dir");
+    }
+    setSearchParams(sp, { replace: true });
+  };
+
   const [mostrarCanceladas, setMostrarCanceladas] = useState(false);
   const [selecionadas, setSelecionadas] = useState<Set<string>>(new Set());
   const [bulkAcumulador, setBulkAcumulador] = useState<string>("");
