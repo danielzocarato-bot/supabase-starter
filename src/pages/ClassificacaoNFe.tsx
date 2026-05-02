@@ -149,9 +149,24 @@ export default function ClassificacaoNFe() {
   const [itens, setItens] = useState<ItemNFe[]>([]);
   const [notasMapState, setNotasMapState] = useState<Map<string, NotaInfo>>(new Map());
 
-  const [filtro, setFiltro] = useState<"todos" | "aguardando" | "classificados">("todos");
-  const [buscaInput, setBuscaInput] = useState("");
-  const [busca, setBusca] = useState("");
+  // Filtro e busca persistidos na URL
+  const filtro = ((): "todos" | "aguardando" | "classificados" => {
+    const f = searchParams.get("filtro");
+    if (f === "aguardando" || f === "classificados") return f;
+    return "todos";
+  })();
+  const setFiltro = (f: "todos" | "aguardando" | "classificados") => {
+    const sp = new URLSearchParams(searchParams);
+    if (f === "todos") sp.delete("filtro"); else sp.set("filtro", f);
+    setSearchParams(sp, { replace: true });
+  };
+  const buscaInput = searchParams.get("q") ?? "";
+  const setBuscaInput = (v: string) => {
+    const sp = new URLSearchParams(searchParams);
+    if (!v) sp.delete("q"); else sp.set("q", v);
+    setSearchParams(sp, { replace: true });
+  };
+  const [busca, setBusca] = useState(buscaInput);
   const [showSaveIndicator, setShowSaveIndicator] = useState(false);
   const [pisca, setPisca] = useState<Set<string>>(new Set());
   const [exportando, setExportando] = useState(false);
