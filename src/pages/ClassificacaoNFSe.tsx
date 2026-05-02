@@ -923,7 +923,7 @@ export default function ClassificacaoNFSe() {
         </AnimatePresence>
 
         {/* Tabela */}
-        {filtradas.length === 0 ? (
+        {filtradasOrdenadas.length === 0 ? (
           <Card className="p-12 rounded-xl text-center space-y-3">
             {notas.length === 0 ? (
               <>
