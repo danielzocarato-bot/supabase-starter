@@ -698,7 +698,7 @@ export default function ClassificacaoNFe() {
                   (competencia.status === "concluida" || competencia.status === "exportada") && (
                   <Button
                     size="sm"
-                    onClick={handleExportarPlaceholder}
+                    onClick={handleExportarTxt}
                     disabled={exportando}
                     variant={competencia.status === "exportada" ? "outline" : "default"}
                     className={
