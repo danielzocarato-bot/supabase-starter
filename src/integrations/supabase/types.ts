@@ -509,6 +509,38 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      dashboard_atencao: {
+        Args: never
+        Returns: {
+          cliente_id: string
+          cliente_razao: string
+          competencia_id: string
+          dias_parado: number
+          motivo: string
+          notas_classificadas: number
+          pct: number
+          periodo: string
+          status: Database["public"]["Enums"]["competencia_status"]
+          tipo: Database["public"]["Enums"]["tipo_operacao"]
+          total_notas: number
+          ultima_atividade: string
+        }[]
+      }
+      dashboard_em_andamento: {
+        Args: never
+        Returns: {
+          cliente_id: string
+          cliente_razao: string
+          competencia_id: string
+          created_at: string
+          notas_classificadas: number
+          pct: number
+          periodo: string
+          status: Database["public"]["Enums"]["competencia_status"]
+          tipo: Database["public"]["Enums"]["tipo_operacao"]
+          total_notas: number
+        }[]
+      }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
