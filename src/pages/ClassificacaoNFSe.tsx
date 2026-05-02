@@ -1034,7 +1034,7 @@ export default function ClassificacaoNFSe() {
             {totalPag > 1 && (
               <div className="flex items-center justify-between px-4 py-3 border-t bg-muted/20">
                 <p className="text-xs text-muted-foreground tabular-nums">
-                  Mostrando {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtradas.length)} de {filtradas.length}
+                  Mostrando {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtradasOrdenadas.length)} de {filtradasOrdenadas.length}
                 </p>
                 <div className="flex items-center gap-2">
                   <Button
