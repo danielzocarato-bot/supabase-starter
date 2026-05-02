@@ -309,6 +309,33 @@ Deno.serve(async (req) => {
   }
 
   const filename = `dominio_${cnpjDigitsCliente}_${comp.periodo}.txt`;
+
+  // Auditoria — registra exportação (não bloqueia em caso de falha)
+  try {
+    const hashSha = await sha256Hex(bytes);
+    const { data: userProfile } = await admin
+      .from("profiles")
+      .select("email, nome")
+      .eq("id", userRes.user.id)
+      .maybeSingle();
+
+    await admin.from("exportacoes").insert({
+      competencia_id,
+      cliente_id: cliente.id,
+      gerado_por: userRes.user.id,
+      gerado_por_email: userProfile?.email,
+      gerado_por_nome: userProfile?.nome,
+      arquivo_nome: filename,
+      formato: "leiaute_18",
+      total_notas: (notas ?? []).filter((n: any) => !n.cancelada).length,
+      total_itens: null,
+      bytes_size: bytes.length,
+      hash_sha256: hashSha,
+    });
+  } catch (e) {
+    console.error("[gerar-txt-dominio] Falha ao registrar auditoria:", e);
+  }
+
   return new Response(bytes, {
     status: 200,
     headers: {
