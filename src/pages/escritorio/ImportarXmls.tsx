@@ -15,9 +15,11 @@ import {
 import {
   Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
 } from "@/components/ui/command";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "sonner";
 import {
-  Check, ChevronsUpDown, FileCode2, Loader2, Upload, X, CheckCircle2, AlertTriangle, Trash2,
+  Check, ChevronsUpDown, FileCode2, Loader2, Upload, X, CheckCircle2, AlertTriangle, Trash2, Cloud, Search,
 } from "lucide-react";
 import { maskCNPJ } from "@/lib/format";
 
