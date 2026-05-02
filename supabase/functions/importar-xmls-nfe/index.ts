@@ -625,5 +625,7 @@ Deno.serve(async (req) => {
     invalidos,
     enriquecidos,
     falhas_enriquecimento,
+    containers_descompactados,
+    formato_falho,
   });
 });
