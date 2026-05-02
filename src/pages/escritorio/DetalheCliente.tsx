@@ -1139,12 +1139,13 @@ function AbaCompetencias({ clienteId }: { clienteId: string }) {
   const [loading, setLoading] = useState(true);
   const [comps, setComps] = useState<CompetenciaRow[]>([]);
   const [highlightId, setHighlightId] = useState<string | null>(null);
+  const [excluindo, setExcluindo] = useState<CompetenciaRow | null>(null);
 
   const carregar = async () => {
     setLoading(true);
     const { data, error } = await supabase
       .from("competencias")
-      .select("id, periodo, status, total_notas, notas_classificadas, created_at, exportada_em, concluida_em")
+      .select("id, periodo, status, tipo, total_notas, notas_classificadas, created_at, exportada_em, concluida_em")
       .eq("cliente_id", clienteId)
       .order("periodo", { ascending: false });
     if (error) toast.error("Algo precisa de atenção", { description: error.message });
