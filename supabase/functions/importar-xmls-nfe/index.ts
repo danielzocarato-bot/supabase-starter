@@ -255,175 +255,22 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: "Nenhum XML encontrado nos arquivos enviados." }, 400);
   }
 
-  // Cria/atualiza competência por (cliente_id, periodo, tipo)
-  const { data: comp, error: compErr } = await admin
-    .from("competencias")
-    .upsert(
-      { cliente_id, periodo, tipo, arquivo_origem: `${cliente_id}/${periodo}/` },
-      { onConflict: "cliente_id,periodo,tipo" },
-    )
-    .select("id")
-    .single();
-  if (compErr || !comp) {
-    return json({ ok: false, error: `Falha ao criar competência: ${compErr?.message}` }, 500);
-  }
-  const competencia_id = comp.id;
-
-  // Conta existentes para diferenciar adicionadas vs duplicadas
-  const { data: existentes } = await admin
-    .from("notas_fiscais")
-    .select("id_externo")
-    .eq("competencia_id", competencia_id);
-  const existentesSet = new Set((existentes ?? []).map((n) => n.id_externo));
-
-  // Parse + validação semântica
-  const tipoOpNfe = tipo === "nfe_entrada" ? "entrada" : "saida";
-  const nao_aplicaveis: Array<{ chave: string; motivo: string }> = [];
-  let invalidos = 0;
-  const validas: ParsedNFe[] = [];
-
-  for (const x of xmls) {
-    const p = parseXml(x.content);
-    if (!p) {
-      invalidos++;
-      continue;
-    }
-    if (tipo === "nfe_entrada") {
-      if (p.dest_cnpj !== clienteCnpj) {
-        nao_aplicaveis.push({ chave: p.chave_nfe, motivo: "Esta NFe não é de entrada para o cliente" });
-        continue;
-      }
-    } else {
-      if (p.emit_cnpj !== clienteCnpj) {
-        nao_aplicaveis.push({ chave: p.chave_nfe, motivo: "Esta NFe não é de saída para o cliente" });
-        continue;
-      }
-    }
-    validas.push(p);
-  }
-
-  // UPSERT notas
-  let duplicadas_atualizadas = 0;
-  let notas_processadas = 0;
-  let itens_processados = 0;
-
-  for (const p of validas) {
-    const isEntrada = tipo === "nfe_entrada";
-    const prestador_razao = isEntrada ? p.emit_nome : p.dest_nome;
-    const prestador_cnpj = isEntrada ? p.emit_cnpj : p.dest_cnpj;
-    const prestador_uf = isEntrada ? p.emit_uf : p.dest_uf;
-    const prestador_municipio = isEntrada ? p.emit_municipio : p.dest_municipio;
-    const prestador_endereco = isEntrada ? p.emit_endereco : p.dest_endereco;
-
-    const notaPayload = {
-      competencia_id,
-      id_externo: p.chave_nfe,
-      chave_nfe: p.chave_nfe,
-      tipo_documento: "nfe",
-      tipo_operacao_nfe: tipoOpNfe,
-      numero_nfe: p.numero_nfe,
-      emissao_nfe: p.emissao_nfe,
-      data_competencia: p.emissao_nfe,
-      prestador_razao,
-      prestador_cnpj,
-      prestador_uf,
-      prestador_municipio,
-      prestador_endereco,
-      valor_nfe: p.valor_total,
-      desconto: 0,
-      valor_contabil: p.valor_total,
-      cancelada: false,
-      raw_data: p.raw,
-    };
-
-    const { data: notaSaved, error: notaErr } = await admin
-      .from("notas_fiscais")
-      .upsert(notaPayload, { onConflict: "competencia_id,id_externo" })
-      .select("id")
-      .single();
-
-    if (notaErr || !notaSaved) {
-      console.error("[importar-xmls-nfe] Falha upsert nota", p.chave_nfe, notaErr);
-      continue;
-    }
-
-    if (existentesSet.has(p.chave_nfe)) duplicadas_atualizadas++;
-    notas_processadas++;
-
-    if (p.itens.length > 0) {
-      // Itens: upsert por (nota_id, numero_item) — preserva acumulador_id/classificado_em/classificado_por
-      const itensPayload = p.itens.map((it) => ({
-        nota_id: notaSaved.id,
-        numero_item: it.numero_item,
-        codigo_produto: it.codigo_produto,
-        descricao_produto: it.descricao_produto,
-        ncm: it.ncm,
-        cfop: it.cfop,
-        valor: it.valor ?? 0,
-        raw_data: it.raw,
-      }));
-      const { error: itErr } = await admin
-        .from("notas_fiscais_itens")
-        .upsert(itensPayload, { onConflict: "nota_id,numero_item" });
-      if (itErr) {
-        console.error("[importar-xmls-nfe] Falha upsert itens", p.chave_nfe, itErr);
-      } else {
-        itens_processados += p.itens.length;
-      }
-    }
-  }
-
-  // Enriquecimento BrasilAPI
-  const { data: paraEnriquecer } = await admin
-    .from("notas_fiscais")
-    .select("prestador_cnpj")
-    .eq("competencia_id", competencia_id)
-    .is("prestador_endereco", null)
-    .not("prestador_cnpj", "is", null);
-
-  const cnpjsDistintos = Array.from(
-    new Set(
-      (paraEnriquecer ?? [])
-        .map((n) => digitsOnly(n.prestador_cnpj ?? ""))
-        .filter((c) => c.length === 14),
-    ),
-  );
-
-  let enriquecidos = 0;
-  let falhas_enriquecimento = 0;
-
-  if (cnpjsDistintos.length > 0) {
-    const settled = await runWithConcurrency(cnpjsDistintos, 5, async (cnpj) => {
-      const info = await fetchEmpresaBrasilAPI(cnpj);
-      if (!info || (!info.endereco && !info.ibge)) throw new Error("sem dados");
-      const { error } = await admin
-        .from("notas_fiscais")
-        .update({
-          prestador_endereco: info.endereco,
-          prestador_municipio_ibge: info.ibge,
-        })
-        .eq("competencia_id", competencia_id)
-        .eq("prestador_cnpj", cnpj);
-      if (error) throw error;
-      return true;
+  try {
+    const result = await processarXmls(admin, {
+      cliente_id,
+      cliente: { cnpj: clienteCnpj },
+      periodo,
+      tipo: tipo as "nfe_entrada" | "nfe_saida",
+      xmls,
+      arquivo_origem: `${cliente_id}/${periodo}/`,
     });
-    for (const s of settled) {
-      if (s.status === "fulfilled") enriquecidos++;
-      else falhas_enriquecimento++;
-    }
+    return json({
+      ok: true,
+      ...result,
+      containers_descompactados,
+      formato_falho,
+    });
+  } catch (e: any) {
+    return json({ ok: false, error: e?.message ?? "Falha ao processar XMLs." }, 500);
   }
-
-  return json({
-    ok: true,
-    competencia_id,
-    notas_processadas,
-    itens_processados,
-    duplicadas_atualizadas,
-    nao_aplicaveis,
-    invalidos,
-    enriquecidos,
-    falhas_enriquecimento,
-    containers_descompactados,
-    formato_falho,
-  });
 });
