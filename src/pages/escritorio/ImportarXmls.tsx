@@ -287,6 +287,50 @@ export default function ImportarXmls() {
     }
   }
 
+  async function handleBuscarSieg() {
+    if (!podeSubmeterSieg || !tipo) return;
+    setSubmitting(true);
+    setResultado(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("buscar-xmls-sieg", {
+        body: {
+          cliente_id: clienteId,
+          tipo,
+          periodo,
+          filtro: siegFiltroData,
+        },
+      });
+
+      if (error || (data && (data as any).ok === false)) {
+        const msg = (data as any)?.error || error?.message || "Não conseguimos buscar os XMLs no SIEG.";
+        toast.error("Algo precisa de atenção", { description: msg });
+        setSubmitting(false);
+        return;
+      }
+
+      const r = data as Resultado & { ok: true };
+      setResultado({
+        competencia_id: r.competencia_id,
+        notas_processadas: r.notas_processadas ?? 0,
+        itens_processados: r.itens_processados ?? 0,
+        duplicadas_atualizadas: r.duplicadas_atualizadas ?? 0,
+        nao_aplicaveis: r.nao_aplicaveis ?? [],
+        invalidos: r.invalidos ?? 0,
+        enriquecidos: r.enriquecidos ?? 0,
+        falhas_enriquecimento: r.falhas_enriquecimento ?? 0,
+        fonte: "sieg",
+        total_baixados: (r as any).total_baixados ?? 0,
+      });
+      toast.success("Competência importada com segurança via SIEG.");
+    } catch (e: any) {
+      toast.error("Algo precisa de atenção", {
+        description: e?.message ?? "Verifique a conexão e tente novamente.",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   function reiniciar() {
     setResultado(null);
     setArquivos([]);
