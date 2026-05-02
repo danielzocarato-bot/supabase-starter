@@ -131,7 +131,7 @@ export type Database = {
           notas_classificadas: number
           periodo: string
           status: Database["public"]["Enums"]["competencia_status"]
-          tipo: Database["public"]["Enums"]["tipo_operacao"] | null
+          tipo: Database["public"]["Enums"]["tipo_operacao"]
           total_notas: number
         }
         Insert: {
@@ -144,7 +144,7 @@ export type Database = {
           notas_classificadas?: number
           periodo: string
           status?: Database["public"]["Enums"]["competencia_status"]
-          tipo?: Database["public"]["Enums"]["tipo_operacao"] | null
+          tipo?: Database["public"]["Enums"]["tipo_operacao"]
           total_notas?: number
         }
         Update: {
@@ -157,7 +157,7 @@ export type Database = {
           notas_classificadas?: number
           periodo?: string
           status?: Database["public"]["Enums"]["competencia_status"]
-          tipo?: Database["public"]["Enums"]["tipo_operacao"] | null
+          tipo?: Database["public"]["Enums"]["tipo_operacao"]
           total_notas?: number
         }
         Relationships: [
