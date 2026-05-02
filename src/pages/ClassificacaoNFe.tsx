@@ -1020,7 +1020,7 @@ export default function ClassificacaoNFe() {
           status={competencia.status}
           totalNotas={notasMapState.size}
           onExcluido={() => {
-            navigate(`/app/escritorio/clientes/${competencia.cliente_id}?tab=competencias`);
+            nav(`/app/escritorio/clientes/${competencia.cliente_id}?tab=competencias`);
           }}
         />
       </div>
