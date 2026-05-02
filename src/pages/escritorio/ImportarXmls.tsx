@@ -344,7 +344,7 @@ export default function ImportarXmls() {
         <div>
           <h1 className="text-3xl font-display font-semibold">Importar XMLs</h1>
           <p className="text-muted-foreground mt-1">
-            Carregue XMLs de NF-e (entrada ou saída) para uma competência. Aceita .xml, .zip, .rar e .7z.
+            Suba arquivos manualmente (.xml, .zip, .rar, .7z) ou busque direto do Cofre SIEG.
           </p>
         </div>
         {!resultado && (
