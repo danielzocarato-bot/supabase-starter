@@ -536,6 +536,13 @@ export default function ImportarXmls() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <ResumoLinha label="Notas processadas" valor={resultado.notas_processadas} />
                 <ResumoLinha label="Itens processados" valor={resultado.itens_processados} />
+                {(resultado.containers_descompactados ?? 0) > 1 && (
+                  <ResumoLinha
+                    label="Arquivos extraídos"
+                    valor={resultado.containers_descompactados ?? 0}
+                    hint="containers descompactados"
+                  />
+                )}
                 {resultado.duplicadas_atualizadas > 0 && (
                   <ResumoLinha
                     label="Notas atualizadas"
