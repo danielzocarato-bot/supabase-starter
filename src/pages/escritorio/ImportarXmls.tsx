@@ -452,7 +452,7 @@ export default function ImportarXmls() {
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept=".xml,.zip"
+                    accept=".xml,.zip,.rar,.7z"
                     multiple
                     className="hidden"
                     onChange={(e) => adicionarArquivos(e.target.files)}
@@ -464,7 +464,7 @@ export default function ImportarXmls() {
                       <span className="font-medium text-foreground">Arraste arquivos aqui</span>{" "}
                       <span className="text-muted-foreground">ou clique para escolher</span>
                     </p>
-                    <p className="text-xs text-muted-foreground">.xml ou .zip — até 100 MB no total</p>
+                    <p className="text-xs text-muted-foreground">.xml, .zip, .rar ou .7z — até 100 MB no total</p>
                   </div>
                 </div>
 
