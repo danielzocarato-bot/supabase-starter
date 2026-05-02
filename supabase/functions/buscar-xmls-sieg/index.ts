@@ -43,8 +43,11 @@ async function fetchSiegBatch(apiKey: string, body: SiegBody): Promise<string[]>
   const url = `${SIEG_URL}?api_key=${encodeURIComponent(apiKey)}`;
   const res = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+    headers: {
+      "Content-Type": "application/json",
+      "Accept": "application/json",
+    },
+    body: JSON.stringify({ ...body, ApiKey: apiKey }),
   });
 
   if (!res.ok) {
