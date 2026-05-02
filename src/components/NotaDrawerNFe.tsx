@@ -267,7 +267,7 @@ export function NotaDrawerNFe({
                               />
                             </td>
                           </tr>
-                        </>
+                        </FragmentWithKey>
                       );
                     })}
                   </TableBody>
