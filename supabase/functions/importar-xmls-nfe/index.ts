@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { DOMParser } from "https://esm.sh/@xmldom/xmldom@0.8.10";
 import JSZip from "https://esm.sh/jszip@3.10.1";
+import { digitsOnly } from "../_shared/nfe-parser.ts";
+import { processarXmls } from "../_shared/nfe-import.ts";
 
 const MAX_EXTRACTED_FILE_BYTES = 50 * 1024 * 1024;
 
