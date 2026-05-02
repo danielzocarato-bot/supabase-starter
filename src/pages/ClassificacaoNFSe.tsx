@@ -956,13 +956,31 @@ export default function ClassificacaoNFSe() {
                       aria-label="Selecionar todas da página"
                     />
                   </TableHead>
-                  <TableHead>Nº NFe</TableHead>
-                  <TableHead>Emissão</TableHead>
-                  <TableHead>Prestador</TableHead>
+                  <TableHead>
+                    <HeaderSortavel campo="numero" ordemCampo={ordemCampo} ordemDir={ordemDir} onClick={setOrdem}>
+                      Nº NFe
+                    </HeaderSortavel>
+                  </TableHead>
+                  <TableHead>
+                    <HeaderSortavel campo="emissao" ordemCampo={ordemCampo} ordemDir={ordemDir} onClick={setOrdem}>
+                      Emissão
+                    </HeaderSortavel>
+                  </TableHead>
+                  <TableHead>
+                    <HeaderSortavel campo="prestador" ordemCampo={ordemCampo} ordemDir={ordemDir} onClick={setOrdem}>
+                      Prestador
+                    </HeaderSortavel>
+                  </TableHead>
                   <TableHead>CNPJ</TableHead>
                   <TableHead>Município</TableHead>
                   <TableHead>CNAE</TableHead>
-                  <TableHead className="text-right">Valor</TableHead>
+                  <TableHead className="text-right">
+                    <div className="flex justify-end">
+                      <HeaderSortavel campo="valor" ordemCampo={ordemCampo} ordemDir={ordemDir} onClick={setOrdem}>
+                        Valor
+                      </HeaderSortavel>
+                    </div>
+                  </TableHead>
                   <TableHead className="w-[300px]">Acumulador</TableHead>
                 </TableRow>
               </TableHeader>
