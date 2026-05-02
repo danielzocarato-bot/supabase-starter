@@ -35,6 +35,8 @@ type Resultado = {
   invalidos: number;
   enriquecidos: number;
   falhas_enriquecimento: number;
+  containers_descompactados?: number;
+  formato_falho?: string | null;
 };
 
 const PASSOS_FAKE = [
