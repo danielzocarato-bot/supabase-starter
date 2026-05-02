@@ -15,6 +15,7 @@ type ConfigEscritorio = {
   from_name: string | null;
   endereco_completo: string | null;
   telefone: string | null;
+  sieg_api_key: string | null;
   updated_at: string | null;
 };
 
@@ -28,6 +29,7 @@ export default function Configuracoes() {
     from_name: "",
     endereco_completo: "",
     telefone: "",
+    sieg_api_key: "",
   });
 
   const carregar = async () => {
@@ -48,6 +50,7 @@ export default function Configuracoes() {
       from_name: data?.from_name ?? "",
       endereco_completo: data?.endereco_completo ?? "",
       telefone: data?.telefone ?? "",
+      sieg_api_key: (data as any)?.sieg_api_key ?? "",
     });
     setLoading(false);
   };
@@ -61,7 +64,8 @@ export default function Configuracoes() {
     (form.reply_to_email !== (config.reply_to_email ?? "") ||
       form.from_name !== (config.from_name ?? "") ||
       form.endereco_completo !== (config.endereco_completo ?? "") ||
-      form.telefone !== (config.telefone ?? ""));
+      form.telefone !== (config.telefone ?? "") ||
+      form.sieg_api_key !== (config.sieg_api_key ?? ""));
 
   const handleSalvar = async () => {
     if (
@@ -79,7 +83,8 @@ export default function Configuracoes() {
         from_name: form.from_name.trim() || null,
         endereco_completo: form.endereco_completo.trim() || null,
         telefone: form.telefone.trim() || null,
-      })
+        sieg_api_key: form.sieg_api_key.trim() || null,
+      } as any)
       .eq("id", 1);
     setSaving(false);
     if (error) {
@@ -216,18 +221,47 @@ export default function Configuracoes() {
                 {new Date(config.updated_at).toLocaleString("pt-BR")}
               </p>
             )}
+          </Card>
 
-            <div className="flex justify-end pt-2">
-              <Button
-                onClick={handleSalvar}
-                disabled={!dirty || saving}
-                className="bg-brand text-brand-foreground hover:bg-brand/90"
-              >
-                {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                {saving ? "Processando…" : "Salvar alterações"}
-              </Button>
+          {/* Card SIEG */}
+          <Card className="p-6 space-y-5 mt-6">
+            <div>
+              <h2 className="text-lg font-medium">Integração SIEG</h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                Configure sua chave de API SIEG para buscar XMLs diretamente do Cofre, sem upload manual.
+              </p>
+            </div>
+
+            <div>
+              <Label htmlFor="sieg_api_key">API Key SIEG</Label>
+              <Input
+                id="sieg_api_key"
+                type="password"
+                value={form.sieg_api_key}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, sieg_api_key: e.target.value }))
+                }
+                placeholder="••••••••••"
+                className="mt-1 font-mono"
+                autoComplete="off"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Encontre em <strong>Minha Conta → Integrações API SIEG</strong> dentro da plataforma SIEG.
+                Acesso restrito ao administrador da conta.
+              </p>
             </div>
           </Card>
+
+          <div className="flex justify-end pt-4">
+            <Button
+              onClick={handleSalvar}
+              disabled={!dirty || saving}
+              className="bg-brand text-brand-foreground hover:bg-brand/90"
+            >
+              {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              {saving ? "Processando…" : "Salvar alterações"}
+            </Button>
+          </div>
         </TabsContent>
       </Tabs>
     </div>
