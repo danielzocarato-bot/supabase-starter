@@ -252,13 +252,26 @@ async function handleWebhook(req: Request): Promise<Response> {
     status: 'pending',
   })
 
+  // Lê nome do remetente da config do escritório (fallback SITE_NAME)
+  let fromName = SITE_NAME
+  try {
+    const { data: cfg } = await supabase
+      .from('configuracoes_escritorio')
+      .select('from_name')
+      .eq('id', 1)
+      .maybeSingle()
+    if (cfg?.from_name) fromName = cfg.from_name
+  } catch (e) {
+    console.warn('Falha ao ler configuracoes_escritorio, usando fallback', { error: e })
+  }
+
   const { error: enqueueError } = await supabase.rpc('enqueue_email', {
     queue_name: 'auth_emails',
     payload: {
       run_id,
       message_id: messageId,
       to: payload.data.email,
-      from: `${SITE_NAME} <noreply@${FROM_DOMAIN}>`,
+      from: `${fromName} <noreply@${FROM_DOMAIN}>`,
       sender_domain: SENDER_DOMAIN,
       subject: EMAIL_SUBJECTS[emailType] || 'Notification',
       html,

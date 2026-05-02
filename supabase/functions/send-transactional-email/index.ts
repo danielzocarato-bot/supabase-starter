@@ -15,8 +15,26 @@ const SENDER_DOMAIN = "notify.classifica.acrux-group.com.br"
 // even though actual sending uses the subdomain above.
 const FROM_DOMAIN = "classifica.acrux-group.com.br"
 
-// Reply-to: provisório. Trocar para contato@acrux-group.com.br quando o email institucional for criado.
-const REPLY_TO = "daniel.zocarato@gmail.com"
+// Reply-to / from name: lidos de configuracoes_escritorio (singleton id=1).
+// Os valores abaixo são fallback caso a leitura falhe.
+const REPLY_TO_FALLBACK = "daniel.zocarato@gmail.com"
+const FROM_NAME_FALLBACK = "Acrux Contabilidade"
+
+async function getConfigEscritorio(adminClient: any): Promise<{ replyTo: string; fromName: string }> {
+  try {
+    const { data } = await adminClient
+      .from("configuracoes_escritorio")
+      .select("reply_to_email, from_name")
+      .eq("id", 1)
+      .maybeSingle()
+    return {
+      replyTo: data?.reply_to_email ?? REPLY_TO_FALLBACK,
+      fromName: data?.from_name ?? FROM_NAME_FALLBACK,
+    }
+  } catch {
+    return { replyTo: REPLY_TO_FALLBACK, fromName: FROM_NAME_FALLBACK }
+  }
+}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -311,13 +329,15 @@ Deno.serve(async (req) => {
     status: 'pending',
   })
 
+  const { replyTo, fromName } = await getConfigEscritorio(supabase)
+
   const { error: enqueueError } = await supabase.rpc('enqueue_email', {
     queue_name: 'transactional_emails',
     payload: {
       message_id: messageId,
       to: effectiveRecipient,
-      from: `${SITE_NAME} <noreply@${FROM_DOMAIN}>`,
-      reply_to: REPLY_TO,
+      from: `${fromName} <noreply@${FROM_DOMAIN}>`,
+      reply_to: replyTo,
       sender_domain: SENDER_DOMAIN,
       subject: resolvedSubject,
       html,
