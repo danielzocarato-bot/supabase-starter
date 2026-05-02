@@ -435,6 +435,36 @@ export default function ClassificacaoNFe() {
     return arr;
   }, [itens, itensFiltrados, notasMapState]);
 
+  // Continuar de onde parei: scrolla para o primeiro grupo pendente
+  useEffect(() => {
+    if (loading || !competencia) return;
+    if (competencia.status !== "aberta") return;
+    const totalClassif = itensElegiveis.filter((i) => i.acumulador_id).length;
+    if (totalClassif === 0) return;
+    const t = setTimeout(() => {
+      let el: Element | null = null;
+      if (modo === "cfop") {
+        const grupoPendente = gruposCfop.find((g) => g.classificados < g.itens.length);
+        if (grupoPendente) {
+          el = document.querySelector(`[data-cfop-id="${grupoPendente.cfop}"]`);
+        }
+      } else {
+        const notaPendente = gruposNota.find((g) => g.classificados < g.total);
+        if (notaPendente) {
+          el = document.querySelector(`[data-nota-id="${notaPendente.notaId}"]`);
+        }
+      }
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.classList.add("ring-2", "ring-brand", "ring-offset-2");
+      setTimeout(() => {
+        el!.classList.remove("ring-2", "ring-brand", "ring-offset-2");
+      }, 2000);
+    }, 300);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, modo]);
+
   // Save indicator
   const saveTimerRef = useRef<number | null>(null);
   const triggerSaveIndicator = () => {
