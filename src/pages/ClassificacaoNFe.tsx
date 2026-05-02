@@ -31,12 +31,16 @@ import {
 import { toast } from "sonner";
 import {
   ArrowLeft, ArrowDownToLine, ArrowUpFromLine, CheckCircle2, ChevronDown,
-  ChevronRight, ChevronsUpDown, Download, Eye, Layers, List, Loader2, Search, Undo2,
+  ChevronRight, ChevronsUpDown, Download, Eye, Layers, List, Loader2, MoreHorizontal, Search, Trash2, Undo2,
 } from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { StatusCompetenciaBadge } from "@/components/StatusCompetenciaBadge";
 import { formatCNPJ } from "@/lib/format";
 import { useStatusActions } from "@/lib/useStatusActions";
 import { NotaDrawerNFe, type DrawerNota, type DrawerItem } from "@/components/NotaDrawerNFe";
+import { ExcluirImportacaoDialog } from "@/components/ExcluirImportacaoDialog";
 
 const MESES_PT = [
   "Janeiro","Fevereiro","Março","Abril","Maio","Junho",
@@ -166,6 +170,7 @@ export default function ClassificacaoNFe() {
   const [pendentesModalOpen, setPendentesModalOpen] = useState(false);
   const [pendentesLista, setPendentesLista] = useState<string[]>([]);
   const [pendentesTipo, setPendentesTipo] = useState<string | null>(null);
+  const [excluirOpen, setExcluirOpen] = useState(false);
 
   // Modo persiste em ?modo=cfop|nota (default cfop)
   const modo: Modo = (searchParams.get("modo") as Modo) === "nota" ? "nota" : "cfop";
@@ -717,6 +722,24 @@ export default function ClassificacaoNFe() {
                         : "Exportar TXT Domínio"}
                   </Button>
                 )}
+                {profile?.role === "escritorio" && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={() => setExcluirOpen(true)}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Excluir importação
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
               </div>
             </div>
 
@@ -987,6 +1010,19 @@ export default function ClassificacaoNFe() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        <ExcluirImportacaoDialog
+          open={excluirOpen}
+          onOpenChange={setExcluirOpen}
+          competenciaId={competencia.id}
+          periodoLabel={formatPeriodo(competencia.periodo)}
+          tipoLabel={tipoLabel}
+          status={competencia.status}
+          totalNotas={notasMapState.size}
+          onExcluido={() => {
+            nav(`/app/escritorio/clientes/${competencia.cliente_id}?tab=competencias`);
+          }}
+        />
       </div>
     </TooltipProvider>
   );

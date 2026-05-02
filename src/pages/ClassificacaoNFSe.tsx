@@ -38,10 +38,14 @@ import {
 import { toast } from "sonner";
 import {
   ArrowLeft, Check, CheckCircle2, ChevronLeft, ChevronRight, ChevronsUpDown,
-  Download, Loader2, Search, Undo2, X,
+  Download, Loader2, MoreHorizontal, Search, Trash2, Undo2, X,
 } from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { formatCNPJ } from "@/lib/format";
 import { StatusCompetenciaBadge } from "@/components/StatusCompetenciaBadge";
+import { ExcluirImportacaoDialog } from "@/components/ExcluirImportacaoDialog";
 
 const MESES_PT = [
   "Janeiro","Fevereiro","Março","Abril","Maio","Junho",
@@ -156,6 +160,7 @@ export default function ClassificacaoNFSe() {
   const [pendentesModalOpen, setPendentesModalOpen] = useState(false);
   const [pendentesLista, setPendentesLista] = useState<string[]>([]);
   const [pendentesTipo, setPendentesTipo] = useState<"classificacao" | "ibge" | null>(null);
+  const [excluirOpen, setExcluirOpen] = useState(false);
 
   // Debounce busca
   useEffect(() => {
@@ -662,6 +667,24 @@ export default function ClassificacaoNFSe() {
                         : "Exportar TXT Domínio"}
                   </Button>
                 )}
+                {profile?.role === "escritorio" && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={() => setExcluirOpen(true)}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Excluir importação
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
               </div>
             </div>
 
@@ -1030,6 +1053,19 @@ export default function ClassificacaoNFSe() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        <ExcluirImportacaoDialog
+          open={excluirOpen}
+          onOpenChange={setExcluirOpen}
+          competenciaId={competencia.id}
+          periodoLabel={formatPeriodo(competencia.periodo)}
+          tipoLabel="NFSe — Tomada"
+          status={competencia.status}
+          totalNotas={notas.length}
+          onExcluido={() => {
+            nav(`/app/escritorio/clientes/${competencia.cliente_id}?tab=competencias`);
+          }}
+        />
       </div>
     </TooltipProvider>
   );

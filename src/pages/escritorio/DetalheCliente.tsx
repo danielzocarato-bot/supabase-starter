@@ -28,6 +28,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { formatCNPJ, onlyDigits } from "@/lib/format";
+import { ExcluirImportacaoDialog } from "@/components/ExcluirImportacaoDialog";
 
 type Cliente = {
   id: string;
@@ -1088,11 +1089,18 @@ type CompetenciaRow = {
   id: string;
   periodo: string;
   status: "aberta" | "concluida" | "exportada";
+  tipo: "nfse_tomada" | "nfe_entrada" | "nfe_saida";
   total_notas: number;
   notas_classificadas: number;
   created_at: string;
   exportada_em: string | null;
   concluida_em: string | null;
+};
+
+const TIPO_LABEL: Record<CompetenciaRow["tipo"], string> = {
+  nfse_tomada: "NFSe — Tomada",
+  nfe_entrada: "NF-e Entrada",
+  nfe_saida: "NF-e Saída",
 };
 
 const MESES_PT = [
@@ -1132,12 +1140,13 @@ function AbaCompetencias({ clienteId }: { clienteId: string }) {
   const [loading, setLoading] = useState(true);
   const [comps, setComps] = useState<CompetenciaRow[]>([]);
   const [highlightId, setHighlightId] = useState<string | null>(null);
+  const [excluindo, setExcluindo] = useState<CompetenciaRow | null>(null);
 
   const carregar = async () => {
     setLoading(true);
     const { data, error } = await supabase
       .from("competencias")
-      .select("id, periodo, status, total_notas, notas_classificadas, created_at, exportada_em, concluida_em")
+      .select("id, periodo, status, tipo, total_notas, notas_classificadas, created_at, exportada_em, concluida_em")
       .eq("cliente_id", clienteId)
       .order("periodo", { ascending: false });
     if (error) toast.error("Algo precisa de atenção", { description: error.message });
@@ -1253,14 +1262,32 @@ function AbaCompetencias({ clienteId }: { clienteId: string }) {
                     {new Date(c.created_at).toLocaleDateString("pt-BR")}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => nav(`/app/escritorio/competencias/${c.id}`)}
-                    >
-                      Abrir
-                      <ArrowRight className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => nav(`/app/escritorio/competencias/${c.id}`)}
+                      >
+                        Abrir
+                        <ArrowRight className="h-4 w-4" />
+                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => setExcluindo(c)}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Excluir importação
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </TableCell>
                 </motion.tr>
               );
@@ -1268,6 +1295,19 @@ function AbaCompetencias({ clienteId }: { clienteId: string }) {
           </TableBody>
         </Table>
       </Card>
+
+      {excluindo && (
+        <ExcluirImportacaoDialog
+          open={!!excluindo}
+          onOpenChange={(v) => !v && setExcluindo(null)}
+          competenciaId={excluindo.id}
+          periodoLabel={formatPeriodo(excluindo.periodo)}
+          tipoLabel={TIPO_LABEL[excluindo.tipo]}
+          status={excluindo.status}
+          totalNotas={excluindo.total_notas ?? 0}
+          onExcluido={() => { setExcluindo(null); carregar(); }}
+        />
+      )}
     </div>
   );
 }
