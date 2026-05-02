@@ -6,7 +6,7 @@ import { useTheme } from "@/lib/theme";
 import { AcruxLogo } from "@/components/AcruxLogo";
 import { Button } from "@/components/ui/button";
 import {
-  LayoutDashboard, Users, Upload, Settings, LogOut, Moon, Sun, FileText, UserCircle,
+  LayoutDashboard, Users, Upload, Settings, LogOut, Moon, Sun, FileText, UserCircle, FileCode2,
 } from "lucide-react";
 
 interface NavItem { to: string; label: string; icon: any; }
@@ -15,6 +15,7 @@ const navEscritorio: NavItem[] = [
   { to: "/app/escritorio", label: "Dashboard", icon: LayoutDashboard },
   { to: "/app/escritorio/clientes", label: "Clientes", icon: Users },
   { to: "/app/escritorio/importar", label: "Importar Planilha", icon: Upload },
+  { to: "/app/escritorio/importar-xmls", label: "Importar XMLs", icon: FileCode2 },
   { to: "/app/escritorio/usuarios", label: "Usuários", icon: UserCircle },
   { to: "/app/escritorio/configuracoes", label: "Configurações", icon: Settings },
 ];
