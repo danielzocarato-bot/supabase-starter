@@ -230,8 +230,15 @@ export default function ImportarXmls() {
       });
 
       if (error || (data && data.ok === false)) {
-        const msg = (data as any)?.error || error?.message || "Não conseguimos processar os arquivos.";
-        toast.error("Algo precisa de atenção", { description: msg });
+        const formatoFalho = (data as any)?.formato_falho as string | undefined;
+        if (formatoFalho) {
+          toast.error("Algo precisa de atenção", {
+            description: `Não conseguimos descompactar arquivos .${formatoFalho}. Descompacte localmente e suba os XMLs ou arquivos .zip.`,
+          });
+        } else {
+          const msg = (data as any)?.error || error?.message || "Não conseguimos processar os arquivos.";
+          toast.error("Algo precisa de atenção", { description: msg });
+        }
         setSubmitting(false);
         return;
       }
@@ -246,6 +253,8 @@ export default function ImportarXmls() {
         invalidos: r.invalidos ?? 0,
         enriquecidos: r.enriquecidos ?? 0,
         falhas_enriquecimento: r.falhas_enriquecimento ?? 0,
+        containers_descompactados: r.containers_descompactados ?? 0,
+        formato_falho: r.formato_falho ?? null,
       });
       toast.success("Competência importada com segurança.");
     } catch (e: any) {
