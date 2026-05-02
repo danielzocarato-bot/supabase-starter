@@ -255,46 +255,9 @@ export default function Configuracoes() {
                 className="mt-1 font-mono"
                 autoComplete="off"
               />
-              <p className="text-xs text-muted-foreground mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
                 Encontre em <strong>Minha Conta → Integrações API SIEG</strong> dentro da plataforma SIEG.
-                Use a chave gerada para o mesmo usuário informado abaixo.
-              </p>
-            </div>
-
-            <div>
-              <Label htmlFor="sieg_email">E-mail SIEG</Label>
-              <Input
-                id="sieg_email"
-                type="email"
-                value={form.sieg_email}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, sieg_email: e.target.value }))
-                }
-                placeholder="usuario@empresa.com.br"
-                className="mt-1"
-                autoComplete="off"
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Informe o e-mail do mesmo usuário usado para gerar a API Key na SIEG.
-              </p>
-            </div>
-
-            <div>
-              <Label htmlFor="sieg_password">Senha SIEG</Label>
-              <Input
-                id="sieg_password"
-                type="password"
-                value={form.sieg_password}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, sieg_password: e.target.value }))
-                }
-                placeholder="••••••••••"
-                className="mt-1"
-                autoComplete="new-password"
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                A SIEG exige senha junto com a API Key para autenticar a busca em lote dos XMLs.
-                Acesso restrito ao administrador da conta.
+                Se a SIEG retornar "Não Autenticado", verifique se a chave está ativa e se o IP do servidor está liberado no painel.
               </p>
             </div>
           </Card>
