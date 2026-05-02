@@ -28,6 +28,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { formatCNPJ, onlyDigits } from "@/lib/format";
+import { ExcluirImportacaoDialog } from "@/components/ExcluirImportacaoDialog";
 
 type Cliente = {
   id: string;
