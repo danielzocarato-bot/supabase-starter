@@ -52,6 +52,13 @@ function formatDateD(iso: string | null | undefined): string {
   return `${m[3]}/${m[2]}/${m[1]}`;
 }
 
+async function sha256Hex(content: string | Uint8Array): Promise<string> {
+  const data = typeof content === "string" ? new TextEncoder().encode(content) : content;
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 function toLatin1Bytes(s: string): Uint8Array {
   const normalizado = s.normalize("NFD").replace(/\p{Diacritic}/gu, "");
   const bytes = new Uint8Array(normalizado.length);
@@ -302,6 +309,33 @@ Deno.serve(async (req) => {
   }
 
   const filename = `dominio_${cnpjDigitsCliente}_${comp.periodo}.txt`;
+
+  // Auditoria — registra exportação (não bloqueia em caso de falha)
+  try {
+    const hashSha = await sha256Hex(bytes);
+    const { data: userProfile } = await admin
+      .from("profiles")
+      .select("email, nome")
+      .eq("id", userRes.user.id)
+      .maybeSingle();
+
+    await admin.from("exportacoes").insert({
+      competencia_id,
+      cliente_id: cliente.id,
+      gerado_por: userRes.user.id,
+      gerado_por_email: userProfile?.email,
+      gerado_por_nome: userProfile?.nome,
+      arquivo_nome: filename,
+      formato: "leiaute_18",
+      total_notas: (notas ?? []).filter((n: any) => !n.cancelada).length,
+      total_itens: null,
+      bytes_size: bytes.length,
+      hash_sha256: hashSha,
+    });
+  } catch (e) {
+    console.error("[gerar-txt-dominio] Falha ao registrar auditoria:", e);
+  }
+
   return new Response(bytes, {
     status: 200,
     headers: {

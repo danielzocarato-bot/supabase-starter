@@ -38,7 +38,7 @@ import {
 import { toast } from "sonner";
 import {
   ArrowLeft, Check, CheckCircle2, ChevronLeft, ChevronRight, ChevronsUpDown,
-  Download, Loader2, MoreHorizontal, Search, Trash2, Undo2, X,
+  Download, History, Loader2, MoreHorizontal, Search, Trash2, Undo2, X,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -46,6 +46,7 @@ import {
 import { formatCNPJ } from "@/lib/format";
 import { StatusCompetenciaBadge } from "@/components/StatusCompetenciaBadge";
 import { ExcluirImportacaoDialog } from "@/components/ExcluirImportacaoDialog";
+import { HistoricoExportacoes } from "@/components/HistoricoExportacoes";
 
 const MESES_PT = [
   "Janeiro","Fevereiro","Março","Abril","Maio","Junho",
@@ -161,6 +162,7 @@ export default function ClassificacaoNFSe() {
   const [pendentesLista, setPendentesLista] = useState<string[]>([]);
   const [pendentesTipo, setPendentesTipo] = useState<"classificacao" | "ibge" | null>(null);
   const [excluirOpen, setExcluirOpen] = useState(false);
+  const [historicoOpen, setHistoricoOpen] = useState(false);
 
   // Debounce busca
   useEffect(() => {
@@ -647,6 +649,18 @@ export default function ClassificacaoNFSe() {
                 {profile?.role === "escritorio" &&
                   (competencia.status === "concluida" || competencia.status === "exportada") && (
                   <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setHistoricoOpen(true)}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    <History className="h-3.5 w-3.5" />
+                    Histórico
+                  </Button>
+                )}
+                {profile?.role === "escritorio" &&
+                  (competencia.status === "concluida" || competencia.status === "exportada") && (
+                  <Button
                     size="sm"
                     onClick={handleExportar}
                     disabled={exportando}
@@ -1065,6 +1079,11 @@ export default function ClassificacaoNFSe() {
           onExcluido={() => {
             nav(`/app/escritorio/clientes/${competencia.cliente_id}?tab=competencias`);
           }}
+        />
+        <HistoricoExportacoes
+          open={historicoOpen}
+          onOpenChange={setHistoricoOpen}
+          competenciaId={competencia.id}
         />
       </div>
     </TooltipProvider>

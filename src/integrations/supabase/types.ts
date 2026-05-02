@@ -257,6 +257,79 @@ export type Database = {
         }
         Relationships: []
       }
+      exportacoes: {
+        Row: {
+          arquivo_nome: string
+          bytes_size: number | null
+          cliente_id: string
+          competencia_id: string
+          created_at: string | null
+          formato: string
+          gerado_em: string | null
+          gerado_por: string | null
+          gerado_por_email: string | null
+          gerado_por_nome: string | null
+          hash_sha256: string | null
+          id: string
+          total_itens: number | null
+          total_notas: number | null
+        }
+        Insert: {
+          arquivo_nome: string
+          bytes_size?: number | null
+          cliente_id: string
+          competencia_id: string
+          created_at?: string | null
+          formato: string
+          gerado_em?: string | null
+          gerado_por?: string | null
+          gerado_por_email?: string | null
+          gerado_por_nome?: string | null
+          hash_sha256?: string | null
+          id?: string
+          total_itens?: number | null
+          total_notas?: number | null
+        }
+        Update: {
+          arquivo_nome?: string
+          bytes_size?: number | null
+          cliente_id?: string
+          competencia_id?: string
+          created_at?: string | null
+          formato?: string
+          gerado_em?: string | null
+          gerado_por?: string | null
+          gerado_por_email?: string | null
+          gerado_por_nome?: string | null
+          hash_sha256?: string | null
+          id?: string
+          total_itens?: number | null
+          total_notas?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exportacoes_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exportacoes_competencia_id_fkey"
+            columns: ["competencia_id"]
+            isOneToOne: false
+            referencedRelation: "competencias"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exportacoes_gerado_por_fkey"
+            columns: ["gerado_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notas_fiscais: {
         Row: {
           acumulador_id: string | null
@@ -550,6 +623,21 @@ export type Database = {
         Returns: number
       }
       existe_escritorio: { Args: never; Returns: boolean }
+      exportacoes_da_competencia: {
+        Args: { _competencia_id: string }
+        Returns: {
+          arquivo_nome: string
+          bytes_size: number
+          formato: string
+          gerado_em: string
+          gerado_por_email: string
+          gerado_por_nome: string
+          hash_sha256: string
+          id: string
+          total_itens: number
+          total_notas: number
+        }[]
+      }
       is_escritorio: { Args: never; Returns: boolean }
       meu_cliente_id: { Args: never; Returns: string }
       move_to_dlq: {

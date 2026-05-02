@@ -94,6 +94,13 @@ function pickSerie(raw: any): string {
   return s.length > 0 ? s : "1";
 }
 
+async function sha256Hex(content: string | Uint8Array): Promise<string> {
+  const data = typeof content === "string" ? new TextEncoder().encode(content) : content;
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 // CP1252 / Latin-1 (mesma estratégia do gerar-txt-dominio)
 function toLatin1Bytes(s: string): Uint8Array {
   const normalizado = s.normalize("NFD").replace(/\p{Diacritic}/gu, "");
@@ -374,6 +381,32 @@ Deno.serve(async (req) => {
   const isEntrada = comp.tipo === "nfe_entrada";
   const tipoSuffix = isEntrada ? "entrada" : "saida";
   const filename = `dominio_nfe_${cnpjEmpresa}_${comp.periodo}_${tipoSuffix}.txt`;
+
+  // Auditoria — registra exportação (não bloqueia em caso de falha)
+  try {
+    const hashSha = await sha256Hex(bytes);
+    const { data: userProfile } = await admin
+      .from("profiles")
+      .select("email, nome")
+      .eq("id", userRes.user.id)
+      .maybeSingle();
+
+    await admin.from("exportacoes").insert({
+      competencia_id,
+      cliente_id: cliente.id,
+      gerado_por: userRes.user.id,
+      gerado_por_email: userProfile?.email,
+      gerado_por_nome: userProfile?.nome,
+      arquivo_nome: filename,
+      formato: "dominio_separador",
+      total_notas: notas?.length ?? 0,
+      total_itens: linhas.length,
+      bytes_size: bytes.length,
+      hash_sha256: hashSha,
+    });
+  } catch (e) {
+    console.error("[gerar-txt-separador] Falha ao registrar auditoria:", e);
+  }
 
   return new Response(bytes, {
     status: 200,

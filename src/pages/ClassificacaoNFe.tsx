@@ -31,7 +31,7 @@ import {
 import { toast } from "sonner";
 import {
   ArrowLeft, ArrowDownToLine, ArrowUpFromLine, CheckCircle2, ChevronDown,
-  ChevronRight, ChevronsUpDown, Download, Eye, Layers, List, Loader2, MoreHorizontal, Search, Trash2, Undo2,
+  ChevronRight, ChevronsUpDown, Download, Eye, History, Layers, List, Loader2, MoreHorizontal, Search, Trash2, Undo2,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -41,6 +41,7 @@ import { formatCNPJ } from "@/lib/format";
 import { useStatusActions } from "@/lib/useStatusActions";
 import { NotaDrawerNFe, type DrawerNota, type DrawerItem } from "@/components/NotaDrawerNFe";
 import { ExcluirImportacaoDialog } from "@/components/ExcluirImportacaoDialog";
+import { HistoricoExportacoes } from "@/components/HistoricoExportacoes";
 
 const MESES_PT = [
   "Janeiro","Fevereiro","Março","Abril","Maio","Junho",
@@ -171,6 +172,7 @@ export default function ClassificacaoNFe() {
   const [pendentesLista, setPendentesLista] = useState<string[]>([]);
   const [pendentesTipo, setPendentesTipo] = useState<string | null>(null);
   const [excluirOpen, setExcluirOpen] = useState(false);
+  const [historicoOpen, setHistoricoOpen] = useState(false);
 
   // Modo persiste em ?modo=cfop|nota (default cfop)
   const modo: Modo = (searchParams.get("modo") as Modo) === "nota" ? "nota" : "cfop";
@@ -702,6 +704,18 @@ export default function ClassificacaoNFe() {
                 {profile?.role === "escritorio" &&
                   (competencia.status === "concluida" || competencia.status === "exportada") && (
                   <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setHistoricoOpen(true)}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    <History className="h-3.5 w-3.5" />
+                    Histórico
+                  </Button>
+                )}
+                {profile?.role === "escritorio" &&
+                  (competencia.status === "concluida" || competencia.status === "exportada") && (
+                  <Button
                     size="sm"
                     onClick={handleExportarTxt}
                     disabled={exportando}
@@ -1022,6 +1036,11 @@ export default function ClassificacaoNFe() {
           onExcluido={() => {
             nav(`/app/escritorio/clientes/${competencia.cliente_id}?tab=competencias`);
           }}
+        />
+        <HistoricoExportacoes
+          open={historicoOpen}
+          onOpenChange={setHistoricoOpen}
+          competenciaId={competencia.id}
         />
       </div>
     </TooltipProvider>
