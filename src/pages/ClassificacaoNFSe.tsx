@@ -1192,6 +1192,33 @@ export default function ClassificacaoNFSe() {
 // Subcomponentes
 // ============================================================
 
+type OrdemCampoNFSe = "emissao" | "prestador" | "valor" | "numero";
+type OrdemDirNFSe = "asc" | "desc";
+
+function HeaderSortavel({
+  children, campo, ordemCampo, ordemDir, onClick,
+}: {
+  children: React.ReactNode;
+  campo: OrdemCampoNFSe;
+  ordemCampo: OrdemCampoNFSe;
+  ordemDir: OrdemDirNFSe;
+  onClick: (c: OrdemCampoNFSe) => void;
+}) {
+  const ativo = ordemCampo === campo;
+  return (
+    <button
+      type="button"
+      onClick={() => onClick(campo)}
+      className={`inline-flex items-center gap-1 hover:text-foreground transition-colors ${
+        ativo ? "text-foreground" : "text-muted-foreground"
+      }`}
+    >
+      {children}
+      {ativo && (ordemDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />)}
+    </button>
+  );
+}
+
 function FiltroChip({
   ativo, label, count, onClick,
 }: { ativo: boolean; label: string; count: number; onClick: () => void }) {
