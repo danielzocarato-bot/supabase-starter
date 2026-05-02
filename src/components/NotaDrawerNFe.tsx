@@ -234,9 +234,8 @@ export function NotaDrawerNFe({
                     {itens.map((i) => {
                       const isPiscando = pisca.has(i.id);
                       return (
-                        <>
+                        <FragmentWithKey key={i.id}>
                           <motion.tr
-                            key={i.id}
                             animate={
                               isPiscando
                                 ? { backgroundColor: ["hsl(var(--success) / 0.15)", "hsl(var(--success) / 0)"] }
