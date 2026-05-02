@@ -55,7 +55,7 @@ type ProfileRow = {
   created_at: string;
 };
 
-const TABS = ["informacoes", "acumuladores", "competencias", "usuarios"] as const;
+const TABS = ["informacoes", "acumuladores", "operacoes", "competencias", "usuarios"] as const;
 type TabKey = typeof TABS[number];
 
 export default function DetalheCliente() {
@@ -143,6 +143,7 @@ export default function DetalheCliente() {
         <TabsList>
           <TabsTrigger value="informacoes">Informações</TabsTrigger>
           <TabsTrigger value="acumuladores">Acumuladores</TabsTrigger>
+          <TabsTrigger value="operacoes">Operações</TabsTrigger>
           <TabsTrigger value="competencias">Competências</TabsTrigger>
           <TabsTrigger value="usuarios">Usuários</TabsTrigger>
         </TabsList>
@@ -152,6 +153,9 @@ export default function DetalheCliente() {
         </TabsContent>
         <TabsContent value="acumuladores">
           <AbaAcumuladores clienteId={cliente.id} />
+        </TabsContent>
+        <TabsContent value="operacoes">
+          <AbaOperacoes clienteId={cliente.id} />
         </TabsContent>
         <TabsContent value="competencias">
           <AbaCompetencias clienteId={cliente.id} />
