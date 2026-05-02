@@ -58,8 +58,8 @@ async function fetchSiegBatch(
     const errText = await res.text().catch(() => "");
     let parsed: any;
     try { parsed = JSON.parse(errText); } catch { /* ignore */ }
-    const msg = parsed?.message ?? errText ?? `HTTP ${res.status}`;
-    throw new Error(`SIEG: ${msg}`);
+    const msg = parsed?.Message ?? parsed?.message ?? errText ?? `HTTP ${res.status}`;
+    throw new Error(`SIEG ${res.status}: ${msg}`);
   }
 
   let text = await res.text();
