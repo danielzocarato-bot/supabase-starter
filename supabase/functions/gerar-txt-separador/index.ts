@@ -94,6 +94,13 @@ function pickSerie(raw: any): string {
   return s.length > 0 ? s : "1";
 }
 
+async function sha256Hex(content: string | Uint8Array): Promise<string> {
+  const data = typeof content === "string" ? new TextEncoder().encode(content) : content;
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 // CP1252 / Latin-1 (mesma estratégia do gerar-txt-dominio)
 function toLatin1Bytes(s: string): Uint8Array {
   const normalizado = s.normalize("NFD").replace(/\p{Diacritic}/gu, "");
