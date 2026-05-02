@@ -29,6 +29,7 @@ export default function Configuracoes() {
     from_name: "",
     endereco_completo: "",
     telefone: "",
+    sieg_api_key: "",
   });
 
   const carregar = async () => {
