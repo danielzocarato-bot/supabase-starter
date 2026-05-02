@@ -50,6 +50,7 @@ export default function Configuracoes() {
       from_name: data?.from_name ?? "",
       endereco_completo: data?.endereco_completo ?? "",
       telefone: data?.telefone ?? "",
+      sieg_api_key: (data as any)?.sieg_api_key ?? "",
     });
     setLoading(false);
   };
@@ -63,7 +64,8 @@ export default function Configuracoes() {
     (form.reply_to_email !== (config.reply_to_email ?? "") ||
       form.from_name !== (config.from_name ?? "") ||
       form.endereco_completo !== (config.endereco_completo ?? "") ||
-      form.telefone !== (config.telefone ?? ""));
+      form.telefone !== (config.telefone ?? "") ||
+      form.sieg_api_key !== (config.sieg_api_key ?? ""));
 
   const handleSalvar = async () => {
     if (
