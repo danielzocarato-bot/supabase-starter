@@ -38,7 +38,7 @@ import {
 import { toast } from "sonner";
 import {
   ArrowLeft, Check, CheckCircle2, ChevronLeft, ChevronRight, ChevronsUpDown,
-  Download, Loader2, MoreHorizontal, Search, Trash2, Undo2, X,
+  Download, History, Loader2, MoreHorizontal, Search, Trash2, Undo2, X,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -46,6 +46,7 @@ import {
 import { formatCNPJ } from "@/lib/format";
 import { StatusCompetenciaBadge } from "@/components/StatusCompetenciaBadge";
 import { ExcluirImportacaoDialog } from "@/components/ExcluirImportacaoDialog";
+import { HistoricoExportacoes } from "@/components/HistoricoExportacoes";
 
 const MESES_PT = [
   "Janeiro","Fevereiro","Março","Abril","Maio","Junho",
