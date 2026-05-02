@@ -320,18 +320,56 @@ export default function ClassificacaoNFSe() {
     });
   }, [notas, busca, filtro, mostrarCanceladas]);
 
+  // Ordenação aplicada antes da paginação
+  const filtradasOrdenadas = useMemo(() => {
+    const sortFn = (a: Nota, b: Nota) => {
+      let cmp = 0;
+      if (ordemCampo === "emissao") {
+        cmp = (a.emissao_nfe || "").localeCompare(b.emissao_nfe || "");
+      } else if (ordemCampo === "prestador") {
+        cmp = (a.prestador_razao || "").localeCompare(b.prestador_razao || "", "pt-BR");
+      } else if (ordemCampo === "valor") {
+        cmp = (a.valor_nfe || 0) - (b.valor_nfe || 0);
+      } else if (ordemCampo === "numero") {
+        cmp = (a.numero_nfe || "").localeCompare(b.numero_nfe || "", "pt-BR", { numeric: true });
+      }
+      return ordemDir === "asc" ? cmp : -cmp;
+    };
+    return [...filtradas].sort(sortFn);
+  }, [filtradas, ordemCampo, ordemDir]);
+
   // Reset página se ficar fora do range
   useEffect(() => {
-    const totalPag = Math.max(1, Math.ceil(filtradas.length / PAGE_SIZE));
+    const totalPag = Math.max(1, Math.ceil(filtradasOrdenadas.length / PAGE_SIZE));
     if (page > totalPag) setPage(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filtradas.length]);
+  }, [filtradasOrdenadas.length]);
 
-  const totalPag = Math.max(1, Math.ceil(filtradas.length / PAGE_SIZE));
+  const totalPag = Math.max(1, Math.ceil(filtradasOrdenadas.length / PAGE_SIZE));
   const pageItems = useMemo(
-    () => filtradas.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
-    [filtradas, page],
+    () => filtradasOrdenadas.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [filtradasOrdenadas, page],
   );
+
+  // Continuar de onde parei: scrolla para a primeira nota não-classificada
+  useEffect(() => {
+    if (loading || !competencia) return;
+    if (competencia.status !== "aberta") return;
+    const totalClassif = notas.filter((n) => !n.cancelada && n.acumulador_id).length;
+    const primeiraNaoClassif = notas.find((n) => !n.cancelada && !n.acumulador_id);
+    if (totalClassif === 0 || !primeiraNaoClassif) return;
+    const t = setTimeout(() => {
+      const el = document.querySelector(`[data-nota-id="${primeiraNaoClassif.id}"]`);
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.classList.add("ring-2", "ring-brand", "ring-offset-2");
+      setTimeout(() => {
+        el.classList.remove("ring-2", "ring-brand", "ring-offset-2");
+      }, 2000);
+    }, 300);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
 
   // Auto-save indicator
   const saveTimerRef = useRef<number | null>(null);
