@@ -1370,11 +1370,11 @@ function AbaOperacoes({ clienteId }: { clienteId: string }) {
   const handleToggle = async (tipo: TipoOperacao, novo: boolean) => {
     if (!novo && original[tipo]) {
       // Verifica se há competências desse tipo
-      const { count, error } = await supabase
+      const { count, error } = await (supabase as any)
         .from("competencias")
         .select("id", { count: "exact", head: true })
         .eq("cliente_id", clienteId)
-        .eq("tipo" as any, tipo as any);
+        .eq("tipo", tipo);
       if (error) {
         toast.error("Algo precisa de atenção", { description: error.message });
         return;
