@@ -70,6 +70,12 @@ function formatTexto(v: any): string {
   return String(v).replace(/[;\r\n\t]/g, " ").trim();
 }
 
+function aspaTexto(v: any): string {
+  const s = formatTexto(v);
+  const escaped = s.replace(/"/g, '""');
+  return `"${escaped}"`;
+}
+
 function formatDateBR(iso: string | null | undefined): string {
   if (!iso) return "";
   const m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})/);
@@ -314,39 +320,39 @@ Deno.serve(async (req) => {
       const valorUnit = formatDecimalBR(prod.vUnCom ?? 0, 4);
 
       const campos = [
-        cnpjPrestador,                                     // 1
-        razaoSocial,                                       // 2
-        uf,                                                // 3
-        municipio,                                         // 4
-        endereco,                                          // 5
-        numDoc,                                            // 6
-        serie,                                             // 7
-        dataEmi,                                           // 8
-        situacao,                                          // 9
-        formatInt(codAcum),                                // 10
-        cfop,                                              // 11
-        valorProd,                                         // 12
-        valorDesc,                                         // 13
-        valorContabil,                                     // 14
-        formatDecimalBR(icms.vBC ?? 0),                    // 15
-        formatDecimalBR(icms.pICMS ?? 0),                  // 16
-        formatDecimalBR(icms.vICMS ?? 0),                  // 17
-        "0",                                               // 18
-        "0",                                               // 19
-        formatDecimalBR(ipi.vBC ?? 0),                     // 20
-        formatDecimalBR(ipi.pIPI ?? 0),                    // 21
-        formatDecimalBR(ipi.vIPI ?? 0),                    // 22
-        "0",                                               // 23
-        "0",                                               // 24
-        codItem,                                           // 25
-        qtde,                                              // 26
-        valorUnit,                                         // 27
-        formatInt(pis.CST ?? cofins.CST ?? 0),             // 28
-        formatDecimalBR(pis.vBC ?? cofins.vBC ?? 0),       // 29
-        formatDecimalBR(pis.pPIS ?? 0),                    // 30
-        formatDecimalBR(pis.vPIS ?? 0),                    // 31
-        formatDecimalBR(cofins.pCOFINS ?? 0),              // 32
-        formatDecimalBR(cofins.vCOFINS ?? 0),              // 33
+        aspaTexto(cnpjPrestador),                          // 1  C
+        aspaTexto(razaoSocial),                            // 2  C
+        aspaTexto(uf),                                     // 3  C
+        aspaTexto(municipio),                              // 4  C
+        aspaTexto(endereco),                               // 5  C
+        aspaTexto(numDoc),                                 // 6  G
+        aspaTexto(serie),                                  // 7  C
+        aspaTexto(dataEmi),                                // 8  D
+        situacao,                                          // 9  N
+        formatInt(codAcum),                                // 10 N
+        cfop,                                              // 11 N
+        valorProd,                                         // 12 R
+        valorDesc,                                         // 13 R
+        valorContabil,                                     // 14 R
+        formatDecimalBR(icms.vBC ?? 0),                    // 15 R
+        formatDecimalBR(icms.pICMS ?? 0),                  // 16 R
+        formatDecimalBR(icms.vICMS ?? 0),                  // 17 R
+        "0",                                               // 18 R
+        "0",                                               // 19 R
+        formatDecimalBR(ipi.vBC ?? 0),                     // 20 R
+        formatDecimalBR(ipi.pIPI ?? 0),                    // 21 R
+        formatDecimalBR(ipi.vIPI ?? 0),                    // 22 R
+        "0",                                               // 23 R
+        "0",                                               // 24 R
+        aspaTexto(codItem),                                // 25 C
+        qtde,                                              // 26 R
+        valorUnit,                                         // 27 R
+        formatInt(pis.CST ?? cofins.CST ?? 0),             // 28 N
+        formatDecimalBR(pis.vBC ?? cofins.vBC ?? 0),       // 29 R
+        formatDecimalBR(pis.pPIS ?? 0),                    // 30 R
+        formatDecimalBR(pis.vPIS ?? 0),                    // 31 R
+        formatDecimalBR(cofins.pCOFINS ?? 0),              // 32 R
+        formatDecimalBR(cofins.vCOFINS ?? 0),              // 33 R
       ];
 
       linhas.push(campos.join(";"));
