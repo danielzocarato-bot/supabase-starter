@@ -25,6 +25,9 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import {
   ArrowLeft, ArrowDownToLine, ArrowUpFromLine, CheckCircle2, ChevronDown,
@@ -158,6 +161,11 @@ export default function ClassificacaoNFe() {
     sobrescritaIds: string[];
     acumuladorIdNovo: string | null;
   } | null>(null);
+
+  // Pendentes (export)
+  const [pendentesModalOpen, setPendentesModalOpen] = useState(false);
+  const [pendentesLista, setPendentesLista] = useState<string[]>([]);
+  const [pendentesTipo, setPendentesTipo] = useState<string | null>(null);
 
   // Modo persiste em ?modo=cfop|nota (default cfop)
   const modo: Modo = (searchParams.get("modo") as Modo) === "nota" ? "nota" : "cfop";
@@ -516,10 +524,63 @@ export default function ClassificacaoNFe() {
     totalClassificavel: totalItens,
   });
 
-  const handleExportarPlaceholder = () => {
+  const handleExportarTxt = async () => {
+    if (!competencia || !cliente) return;
     setExportando(true);
-    setTimeout(() => setExportando(false), 400);
-    toast.info("Exportação NFe será implementada na Fase 4.");
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) {
+        toast.error("Algo precisa de atenção", { description: "Sessão expirada. Faça login novamente." });
+        return;
+      }
+      const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+      const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/gerar-txt-separador`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+          apikey: SUPABASE_KEY,
+        },
+        body: JSON.stringify({ competencia_id: competencia.id }),
+      });
+
+      if (!res.ok) {
+        let errPayload: any = null;
+        try { errPayload = await res.json(); } catch { /* ignore */ }
+        if (errPayload?.pendentes && Array.isArray(errPayload.pendentes) && errPayload.pendentes.length > 0) {
+          setPendentesLista(errPayload.pendentes);
+          setPendentesTipo(errPayload.tipo_pendencia ?? null);
+          setPendentesModalOpen(true);
+          return;
+        }
+        toast.error("Algo precisa de atenção", {
+          description: errPayload?.error ?? `Falha na exportação (HTTP ${res.status}).`,
+        });
+        return;
+      }
+
+      const blob = await res.blob();
+      const cnpjDigits = (cliente.cnpj || "").replace(/\D/g, "");
+      const tipoSuffix = competencia.tipo === "nfe_entrada" ? "entrada" : "saida";
+      const filename = `dominio_nfe_${cnpjDigits}_${competencia.periodo}_${tipoSuffix}.txt`;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+
+      setCompetencia((c) => c ? { ...c, status: "exportada", exportada_em: new Date().toISOString() } : c);
+      toast.success("Arquivo gerado e pronto para importação no Domínio.");
+    } catch (e: any) {
+      toast.error("Algo precisa de atenção", { description: e?.message ?? "Falha inesperada na exportação." });
+    } finally {
+      setExportando(false);
+    }
   };
 
   // -------- Render --------
@@ -637,7 +698,7 @@ export default function ClassificacaoNFe() {
                   (competencia.status === "concluida" || competencia.status === "exportada") && (
                   <Button
                     size="sm"
-                    onClick={handleExportarPlaceholder}
+                    onClick={handleExportarTxt}
                     disabled={exportando}
                     variant={competencia.status === "exportada" ? "outline" : "default"}
                     className={
@@ -817,6 +878,36 @@ export default function ClassificacaoNFe() {
           onClose={() => setDrawerNotaId(null)}
           onClassificarItem={(itemId, aid) => aplicarAcumuladorIds([itemId], aid, false)}
         />
+
+        {/* Dialog: pendentes de exportação */}
+        <Dialog open={pendentesModalOpen} onOpenChange={setPendentesModalOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>
+                {pendentesTipo === "classificacao"
+                  ? "Itens pendentes de classificação"
+                  : "Pendências encontradas"}
+              </DialogTitle>
+              <DialogDescription>
+                {pendentesTipo === "classificacao"
+                  ? "Classifique os itens abaixo antes de gerar o arquivo TXT."
+                  : "Resolva as pendências abaixo para prosseguir com a exportação."}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="max-h-[50vh] overflow-y-auto rounded-md border bg-muted/30 p-3 text-sm">
+              <ul className="space-y-1.5">
+                {pendentesLista.map((p, idx) => (
+                  <li key={idx} className="leading-snug">• {p}</li>
+                ))}
+              </ul>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setPendentesModalOpen(false)}>
+                Fechar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* AlertDialog: sobrescrita bulk */}
         <AlertDialog
