@@ -1368,7 +1368,7 @@ function GrupoCfopCard({
   const pendentes = totalGrupo - grupo.classificados;
 
   return (
-    <Card className="rounded-xl overflow-hidden">
+    <Card data-cfop-id={grupo.cfop} className="rounded-xl overflow-hidden">
       <div
         className="flex items-center gap-4 p-4 hover:bg-muted/30 cursor-pointer transition-colors"
         onClick={() => setAberto((v) => !v)}
