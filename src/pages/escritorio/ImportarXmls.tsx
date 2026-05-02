@@ -35,6 +35,8 @@ type Resultado = {
   invalidos: number;
   enriquecidos: number;
   falhas_enriquecimento: number;
+  containers_descompactados?: number;
+  formato_falho?: string | null;
 };
 
 const PASSOS_FAKE = [
@@ -168,11 +170,12 @@ export default function ImportarXmls() {
     if (!novos) return;
     const lista = Array.from(novos);
     const aceitos: File[] = [];
+    const aceitas = [".xml", ".zip", ".rar", ".7z"];
     for (const f of lista) {
       const lower = f.name.toLowerCase();
-      if (!lower.endsWith(".xml") && !lower.endsWith(".zip")) {
+      if (!aceitas.some((ext) => lower.endsWith(ext))) {
         toast.error("Algo precisa de atenção", {
-          description: `"${f.name}" foi ignorado — apenas .xml ou .zip são aceitos.`,
+          description: `"${f.name}" foi ignorado — apenas .xml, .zip, .rar ou .7z são aceitos.`,
         });
         continue;
       }
@@ -227,8 +230,15 @@ export default function ImportarXmls() {
       });
 
       if (error || (data && data.ok === false)) {
-        const msg = (data as any)?.error || error?.message || "Não conseguimos processar os arquivos.";
-        toast.error("Algo precisa de atenção", { description: msg });
+        const formatoFalho = (data as any)?.formato_falho as string | undefined;
+        if (formatoFalho) {
+          toast.error("Algo precisa de atenção", {
+            description: `Não conseguimos descompactar arquivos .${formatoFalho}. Descompacte localmente e suba os XMLs ou arquivos .zip.`,
+          });
+        } else {
+          const msg = (data as any)?.error || error?.message || "Não conseguimos processar os arquivos.";
+          toast.error("Algo precisa de atenção", { description: msg });
+        }
         setSubmitting(false);
         return;
       }
@@ -243,6 +253,8 @@ export default function ImportarXmls() {
         invalidos: r.invalidos ?? 0,
         enriquecidos: r.enriquecidos ?? 0,
         falhas_enriquecimento: r.falhas_enriquecimento ?? 0,
+        containers_descompactados: r.containers_descompactados ?? 0,
+        formato_falho: r.formato_falho ?? null,
       });
       toast.success("Competência importada com segurança.");
     } catch (e: any) {
@@ -267,7 +279,7 @@ export default function ImportarXmls() {
         <div>
           <h1 className="text-3xl font-display font-semibold">Importar XMLs</h1>
           <p className="text-muted-foreground mt-1">
-            Carregue XMLs de NF-e (entrada ou saída) para uma competência. Aceita .xml e .zip.
+            Carregue XMLs de NF-e (entrada ou saída) para uma competência. Aceita .xml, .zip, .rar e .7z.
           </p>
         </div>
         {!resultado && (
@@ -440,7 +452,7 @@ export default function ImportarXmls() {
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept=".xml,.zip"
+                    accept=".xml,.zip,.rar,.7z"
                     multiple
                     className="hidden"
                     onChange={(e) => adicionarArquivos(e.target.files)}
@@ -452,7 +464,7 @@ export default function ImportarXmls() {
                       <span className="font-medium text-foreground">Arraste arquivos aqui</span>{" "}
                       <span className="text-muted-foreground">ou clique para escolher</span>
                     </p>
-                    <p className="text-xs text-muted-foreground">.xml ou .zip — até 100 MB no total</p>
+                    <p className="text-xs text-muted-foreground">.xml, .zip, .rar ou .7z — até 100 MB no total</p>
                   </div>
                 </div>
 
@@ -524,6 +536,13 @@ export default function ImportarXmls() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <ResumoLinha label="Notas processadas" valor={resultado.notas_processadas} />
                 <ResumoLinha label="Itens processados" valor={resultado.itens_processados} />
+                {(resultado.containers_descompactados ?? 0) > 1 && (
+                  <ResumoLinha
+                    label="Arquivos extraídos"
+                    valor={resultado.containers_descompactados ?? 0}
+                    hint="containers descompactados"
+                  />
+                )}
                 {resultado.duplicadas_atualizadas > 0 && (
                   <ResumoLinha
                     label="Notas atualizadas"
