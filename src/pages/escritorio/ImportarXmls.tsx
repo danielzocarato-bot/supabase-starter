@@ -151,12 +151,13 @@ export default function ImportarXmls() {
       setProgressIdx(0);
       return;
     }
-    const timers = [
-      setTimeout(() => setProgressIdx(1), 2000),
-      setTimeout(() => setProgressIdx(2), 4000),
-    ];
+    const total = (modo === "sieg" ? PASSOS_FAKE_SIEG : PASSOS_FAKE_UPLOAD).length;
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    for (let i = 1; i < total; i++) {
+      timers.push(setTimeout(() => setProgressIdx(i), i * 1800));
+    }
     return () => timers.forEach(clearTimeout);
-  }, [submitting]);
+  }, [submitting, modo]);
 
   const clienteSelecionado = useMemo(
     () => clientes.find((c) => c.id === clienteId) ?? null,
@@ -170,7 +171,7 @@ export default function ImportarXmls() {
     [arquivos],
   );
 
-  const podeSubmeter =
+  const podeSubmeterUpload =
     !submitting &&
     !semNFeConfigurada &&
     !!clienteId &&
@@ -178,6 +179,13 @@ export default function ImportarXmls() {
     /^\d{4}-\d{2}$/.test(periodo) &&
     arquivos.length > 0 &&
     totalBytes <= MAX_TOTAL_BYTES;
+
+  const podeSubmeterSieg =
+    !submitting &&
+    !semNFeConfigurada &&
+    !!clienteId &&
+    !!tipo &&
+    /^\d{4}-\d{2}$/.test(periodo);
 
   function adicionarArquivos(novos: FileList | File[] | null) {
     if (!novos) return;
