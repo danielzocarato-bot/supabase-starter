@@ -22,14 +22,60 @@ function json(body: unknown, status = 200) {
 function digitsOnly(s: string | null | undefined): string {
   return (s ?? "").toString().replace(/\D/g, "");
 }
+
+function formatCnpjMask(digits: string): string {
+  const d = (digits ?? "").replace(/\D/g, "");
+  if (d.length === 14) {
+    return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 12)}-${d.slice(12)}`;
+  }
+  if (d.length === 11) {
+    return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
+  }
+  return digits ?? "";
+}
+
+function parseNum(v: any): number {
+  if (v == null || v === "") return 0;
+  if (typeof v === "number") return Number.isFinite(v) ? v : 0;
+  // tenta interpretar string: pode vir "1.234,56" ou "1234.56"
+  const s = String(v).trim();
+  if (s === "") return 0;
+  // se contém vírgula, assume formato BR
+  if (s.includes(",")) {
+    const n = parseFloat(s.replace(/\./g, "").replace(",", "."));
+    return Number.isFinite(n) ? n : 0;
+  }
+  const n = parseFloat(s);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function formatDecimalBR(v: any, casas = 2): string {
+  const n = parseNum(v);
+  return n.toFixed(casas).replace(".", ",");
+}
+
+function formatInt(v: any): string {
+  if (v == null || v === "") return "0";
+  if (typeof v === "number") return Number.isFinite(v) ? String(Math.trunc(v)) : "0";
+  const s = String(v).trim();
+  // remove zeros à esquerda mas mantém pelo menos 1 dígito
+  const m = s.match(/-?\d+/);
+  if (!m) return "0";
+  const n = parseInt(m[0], 10);
+  return Number.isFinite(n) ? String(n) : "0";
+}
+
+function formatTexto(v: any): string {
+  if (v == null) return "";
+  return String(v).replace(/[;\r\n\t]/g, " ").trim();
+}
+
 function formatDateBR(iso: string | null | undefined): string {
   if (!iso) return "";
   const m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})/);
   return m ? `${m[3]}/${m[2]}/${m[1]}` : "";
 }
-function escapeForPipe(s: string | null | undefined): string {
-  return (s ?? "").toString().replace(/[|\r\n\t]/g, " ").trim();
-}
+
 function pickSerie(raw: any): string {
   if (!raw || typeof raw !== "object") return "1";
   const cand =
@@ -40,6 +86,17 @@ function pickSerie(raw: any): string {
     null;
   const s = (cand ?? "").toString().trim();
   return s.length > 0 ? s : "1";
+}
+
+// CP1252 / Latin-1 (mesma estratégia do gerar-txt-dominio)
+function toLatin1Bytes(s: string): Uint8Array {
+  const normalizado = s.normalize("NFD").replace(/\p{Diacritic}/gu, "");
+  const bytes = new Uint8Array(normalizado.length);
+  for (let i = 0; i < normalizado.length; i++) {
+    const code = normalizado.charCodeAt(i);
+    bytes[i] = code < 256 ? code : 0x3F;
+  }
+  return bytes;
 }
 
 Deno.serve(async (req) => {
@@ -151,7 +208,7 @@ Deno.serve(async (req) => {
   const { data: notas, error: notasErr } = await admin
     .from("notas_fiscais")
     .select(
-      "id, numero_nfe, chave_nfe, emissao_nfe, prestador_cnpj, prestador_razao, raw_data, tipo_operacao_nfe",
+      "id, numero_nfe, chave_nfe, emissao_nfe, prestador_cnpj, prestador_razao, prestador_uf, prestador_municipio, prestador_endereco, raw_data, tipo_operacao_nfe, cancelada",
     )
     .eq("competencia_id", competencia_id)
     .eq("cancelada", false)
@@ -165,7 +222,7 @@ Deno.serve(async (req) => {
 
   const notaIds = notas.map((n) => n.id);
 
-  // Itens (paginado para evitar limite de 1000)
+  // Itens (paginado)
   const itensAll: any[] = [];
   const CHUNK = 100;
   for (let i = 0; i < notaIds.length; i += CHUNK) {
@@ -173,7 +230,7 @@ Deno.serve(async (req) => {
     const { data: itens, error: itensErr } = await admin
       .from("notas_fiscais_itens")
       .select(
-        "id, nota_id, numero_item, codigo_produto, descricao_produto, ncm, cfop, valor, acumulador_id, acumuladores:acumulador_id ( codigo )",
+        "id, nota_id, numero_item, codigo_produto, descricao_produto, ncm, cfop, valor, raw_data, acumulador_id, acumuladores:acumulador_id ( codigo )",
       )
       .in("nota_id", slice)
       .order("numero_item", { ascending: true });
@@ -211,45 +268,7 @@ Deno.serve(async (req) => {
     );
   }
 
-  // Geração
-  const isEntrada = comp.tipo === "nfe_entrada";
-  const regParceiro = isEntrada ? "0020" : "0010";
-  const regLanc = isEntrada ? "0200" : "0300";
-
-  const linhas: string[] = [];
-
-  // 0000
-  linhas.push(`0000|${cnpjEmpresa}|`);
-
-  // 0010/0020 — parceiros (dedup por CNPJ)
-  const parceirosVistos = new Set<string>();
-  for (const n of notas) {
-    const cnpjP = digitsOnly(n.prestador_cnpj);
-    if (!cnpjP || parceirosVistos.has(cnpjP)) continue;
-    parceirosVistos.add(cnpjP);
-    const razao = escapeForPipe(n.prestador_razao);
-    const razaoTrunc = razao.slice(0, 40);
-    linhas.push(`${regParceiro}|${cnpjP}|${razao}|${razaoTrunc}|`);
-  }
-
-  // 0100 — produtos (dedup por codigo_produto, primeiro CFOP observado)
-  const produtosVistos = new Map<string, { descricao: string; ncm: string; cfop: string }>();
-  for (const it of itensAll) {
-    const cod = escapeForPipe(it.codigo_produto);
-    if (!cod) continue;
-    if (produtosVistos.has(cod)) continue;
-    produtosVistos.set(cod, {
-      descricao: escapeForPipe(it.descricao_produto),
-      ncm: escapeForPipe(it.ncm),
-      cfop: escapeForPipe(it.cfop),
-    });
-  }
-  for (const [cod, info] of produtosVistos) {
-    linhas.push(`0100|${cod}|${info.descricao}|${info.ncm}|${info.cfop}|`);
-  }
-
-  // 0200/0300 — itens em ordem de emissão da nota
-  // Reordena itens conforme ordem das notas (já ordenadas por emissao_nfe asc)
+  // Agrupa itens por nota
   const itensPorNota = new Map<string, any[]>();
   for (const it of itensAll) {
     const arr = itensPorNota.get(it.nota_id) ?? [];
@@ -257,26 +276,85 @@ Deno.serve(async (req) => {
     itensPorNota.set(it.nota_id, arr);
   }
 
+  // Geração — 1 linha por item, 33 campos, separador ;
+  const linhas: string[] = [];
+
   for (const n of notas) {
     const itens = itensPorNota.get(n.id) ?? [];
     if (itens.length === 0) continue;
-    const serie = escapeForPipe(pickSerie(n.raw_data));
-    const numero = escapeForPipe(n.numero_nfe);
+
+    const cnpjPrestador = formatCnpjMask(n.prestador_cnpj ?? "");
+    const razaoSocial = formatTexto(n.prestador_razao);
+    const uf = formatTexto(n.prestador_uf);
+    const municipio = formatTexto(n.prestador_municipio);
+    const endereco = formatTexto(n.prestador_endereco);
+    const numDoc = formatTexto(n.numero_nfe);
+    const serie = formatTexto(pickSerie(n.raw_data));
     const dataEmi = formatDateBR(n.emissao_nfe);
-    const cnpjP = digitsOnly(n.prestador_cnpj);
-    const chave = escapeForPipe(n.chave_nfe);
+    const situacao = n.cancelada ? "2" : "0";
 
     for (const it of itens) {
-      const cfop = escapeForPipe(it.cfop);
-      const valor = Number(it.valor ?? 0).toFixed(2);
-      const codAcum = String(it.acumuladores?.codigo ?? "").trim();
-      linhas.push(
-        `${regLanc}|${serie}|${numero}|${dataEmi}|${cnpjP}|${cfop}|${valor}|${codAcum}|${chave}|`,
-      );
+      const codAcum = String(it.acumuladores?.codigo ?? "0").trim();
+      const cfop = formatInt(it.cfop);
+
+      const prod = it.raw_data?.produto ?? {};
+      const icms = it.raw_data?.icms ?? {};
+      const ipi = it.raw_data?.ipi ?? {};
+      const pis = it.raw_data?.pis ?? {};
+      const cofins = it.raw_data?.cofins ?? {};
+
+      const valorProdRaw = prod.vProd ?? it.valor;
+      const valorDescRaw = prod.vDesc ?? 0;
+      const valorProd = formatDecimalBR(valorProdRaw);
+      const valorDesc = formatDecimalBR(valorDescRaw);
+      const valorContabil = formatDecimalBR(parseNum(valorProdRaw) - parseNum(valorDescRaw));
+
+      const codItem = formatTexto(it.codigo_produto);
+      const qtde = formatDecimalBR(prod.qCom ?? 0, 4);
+      const valorUnit = formatDecimalBR(prod.vUnCom ?? 0, 4);
+
+      const campos = [
+        cnpjPrestador,                                     // 1
+        razaoSocial,                                       // 2
+        uf,                                                // 3
+        municipio,                                         // 4
+        endereco,                                          // 5
+        numDoc,                                            // 6
+        serie,                                             // 7
+        dataEmi,                                           // 8
+        situacao,                                          // 9
+        formatInt(codAcum),                                // 10
+        cfop,                                              // 11
+        valorProd,                                         // 12
+        valorDesc,                                         // 13
+        valorContabil,                                     // 14
+        formatDecimalBR(icms.vBC ?? 0),                    // 15
+        formatDecimalBR(icms.pICMS ?? 0),                  // 16
+        formatDecimalBR(icms.vICMS ?? 0),                  // 17
+        "0",                                               // 18
+        "0",                                               // 19
+        formatDecimalBR(ipi.vBC ?? 0),                     // 20
+        formatDecimalBR(ipi.pIPI ?? 0),                    // 21
+        formatDecimalBR(ipi.vIPI ?? 0),                    // 22
+        "0",                                               // 23
+        "0",                                               // 24
+        codItem,                                           // 25
+        qtde,                                              // 26
+        valorUnit,                                         // 27
+        formatInt(pis.CST ?? cofins.CST ?? 0),             // 28
+        formatDecimalBR(pis.vBC ?? cofins.vBC ?? 0),       // 29
+        formatDecimalBR(pis.pPIS ?? 0),                    // 30
+        formatDecimalBR(pis.vPIS ?? 0),                    // 31
+        formatDecimalBR(cofins.pCOFINS ?? 0),              // 32
+        formatDecimalBR(cofins.vCOFINS ?? 0),              // 33
+      ];
+
+      linhas.push(campos.join(";"));
     }
   }
 
-  const conteudo = linhas.join("\n") + "\n";
+  const conteudo = linhas.join("\r\n") + "\r\n";
+  const bytes = toLatin1Bytes(conteudo);
 
   // Atualiza status
   const { error: updErr } = await admin
@@ -287,14 +365,15 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: `Falha ao atualizar status: ${updErr.message}` }, 500);
   }
 
+  const isEntrada = comp.tipo === "nfe_entrada";
   const tipoSuffix = isEntrada ? "entrada" : "saida";
   const filename = `dominio_nfe_${cnpjEmpresa}_${comp.periodo}_${tipoSuffix}.txt`;
 
-  return new Response(conteudo, {
+  return new Response(bytes, {
     status: 200,
     headers: {
       ...corsHeaders,
-      "Content-Type": "text/plain; charset=utf-8",
+      "Content-Type": "text/plain; charset=windows-1252",
       "Content-Disposition": `attachment; filename="${filename}"`,
     },
   });
