@@ -212,7 +212,7 @@ Deno.serve(async (req) => {
     const reqBody = { ...baseBody, Skip: skip };
     let lote: string[] = [];
     try {
-      lote = await fetchSiegBatch({ apiKey, email, password }, reqBody);
+      lote = await fetchSiegBatch(apiKey, reqBody);
     } catch (e: any) {
       if (page === 0) {
         console.error("[buscar-xmls-sieg] Falha primeira chamada:", e?.message);
