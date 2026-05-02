@@ -170,11 +170,12 @@ export default function ImportarXmls() {
     if (!novos) return;
     const lista = Array.from(novos);
     const aceitos: File[] = [];
+    const aceitas = [".xml", ".zip", ".rar", ".7z"];
     for (const f of lista) {
       const lower = f.name.toLowerCase();
-      if (!lower.endsWith(".xml") && !lower.endsWith(".zip")) {
+      if (!aceitas.some((ext) => lower.endsWith(ext))) {
         toast.error("Algo precisa de atenção", {
-          description: `"${f.name}" foi ignorado — apenas .xml ou .zip são aceitos.`,
+          description: `"${f.name}" foi ignorado — apenas .xml, .zip, .rar ou .7z são aceitos.`,
         });
         continue;
       }
