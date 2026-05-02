@@ -1053,6 +1053,19 @@ export default function ClassificacaoNFSe() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        <ExcluirImportacaoDialog
+          open={excluirOpen}
+          onOpenChange={setExcluirOpen}
+          competenciaId={competencia.id}
+          periodoLabel={formatPeriodo(competencia.periodo)}
+          tipoLabel="NFSe — Tomada"
+          status={competencia.status}
+          totalNotas={notas.length}
+          onExcluido={() => {
+            nav(`/app/escritorio/clientes/${competencia.cliente_id}?tab=competencias`);
+          }}
+        />
       </div>
     </TooltipProvider>
   );
