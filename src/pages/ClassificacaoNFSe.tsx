@@ -124,7 +124,7 @@ type Nota = {
 };
 
 
-export default function Classificacao() {
+export default function ClassificacaoNFSe() {
   const { id } = useParams<{ id: string }>();
   const nav = useNavigate();
   const { profile } = useAuth();
