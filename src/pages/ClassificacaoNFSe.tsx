@@ -37,7 +37,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import {
-  ArrowLeft, Check, CheckCircle2, ChevronLeft, ChevronRight, ChevronsUpDown,
+  ArrowDown, ArrowLeft, ArrowUp, Check, CheckCircle2, ChevronLeft, ChevronRight, ChevronsUpDown,
   Download, History, Loader2, MoreHorizontal, Search, Trash2, Undo2, X,
 } from "lucide-react";
 import {
