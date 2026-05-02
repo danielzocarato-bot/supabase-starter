@@ -112,8 +112,14 @@ interface ParsedNFe {
   tpNF: string | null;
   emit_cnpj: string | null;
   emit_nome: string | null;
+  emit_uf: string | null;
+  emit_municipio: string | null;
+  emit_endereco: string | null;
   dest_cnpj: string | null;
   dest_nome: string | null;
+  dest_uf: string | null;
+  dest_municipio: string | null;
+  dest_endereco: string | null;
   valor_total: number | null;
   itens: Array<{
     numero_item: number;
@@ -124,9 +130,82 @@ interface ParsedNFe {
     valor: number | null;
     qCom: number | null;
     uCom: string | null;
+    vUnCom: number | null;
+    vDesc: number | null;
     raw: Record<string, any>;
   }>;
   raw: Record<string, any>;
+}
+
+// Helper que percorre subtags de ICMS (ICMS00, ICMS10, etc / ICMSSN101, etc)
+function findFirstChild(parent: Element | null, tagPrefixes: string[]): Element | null {
+  if (!parent) return null;
+  const children = (parent as any).childNodes;
+  if (!children) return null;
+  for (let i = 0; i < children.length; i++) {
+    const c = children[i];
+    if (c.nodeType !== 1) continue; // ELEMENT_NODE
+    const localName = (c.localName ?? c.tagName ?? "").toString();
+    if (tagPrefixes.some((p) => localName.startsWith(p))) return c as Element;
+  }
+  return null;
+}
+
+function parseImpostosItem(det: Element | null) {
+  const imposto = firstEl(det, "imposto");
+
+  // ICMS — ICMS00, ICMS10, ..., ICMSSN101, etc.
+  const icmsParent = firstEl(imposto, "ICMS");
+  const icmsTag = findFirstChild(icmsParent, ["ICMS"]);
+
+  // IPI
+  const ipiParent = firstEl(imposto, "IPI");
+  const ipiTrib = firstEl(ipiParent, "IPITrib") ?? findFirstChild(ipiParent, ["IPI"]);
+
+  // PIS
+  const pisParent = firstEl(imposto, "PIS");
+  const pisTag = findFirstChild(pisParent, ["PIS"]);
+
+  // COFINS
+  const cofParent = firstEl(imposto, "COFINS");
+  const cofTag = findFirstChild(cofParent, ["COFINS"]);
+
+  return {
+    icms: {
+      CST: textOf(icmsTag, "CST") ?? textOf(icmsTag, "CSOSN"),
+      vBC: textOf(icmsTag, "vBC"),
+      pICMS: textOf(icmsTag, "pICMS"),
+      vICMS: textOf(icmsTag, "vICMS"),
+    },
+    ipi: {
+      CST: textOf(ipiTrib, "CST"),
+      vBC: textOf(ipiTrib, "vBC"),
+      pIPI: textOf(ipiTrib, "pIPI"),
+      vIPI: textOf(ipiTrib, "vIPI"),
+    },
+    pis: {
+      CST: textOf(pisTag, "CST"),
+      vBC: textOf(pisTag, "vBC"),
+      pPIS: textOf(pisTag, "pPIS"),
+      vPIS: textOf(pisTag, "vPIS"),
+    },
+    cofins: {
+      CST: textOf(cofTag, "CST"),
+      vBC: textOf(cofTag, "vBC"),
+      pCOFINS: textOf(cofTag, "pCOFINS"),
+      vCOFINS: textOf(cofTag, "vCOFINS"),
+    },
+  };
+}
+
+function montaEndereco(ender: Element | null): string | null {
+  if (!ender) return null;
+  const partes = [
+    textOf(ender, "xLgr"),
+    textOf(ender, "nro"),
+    textOf(ender, "xBairro"),
+  ].filter((p) => p && String(p).trim() !== "");
+  return partes.length > 0 ? partes.join(", ") : null;
 }
 
 function parseXml(content: string): ParsedNFe | null {
@@ -146,6 +225,8 @@ function parseXml(content: string): ParsedNFe | null {
   const ide = firstEl(inf, "ide");
   const emit = firstEl(inf, "emit");
   const dest = firstEl(inf, "dest");
+  const enderEmit = firstEl(emit, "enderEmit");
+  const enderDest = firstEl(dest, "enderDest");
   const total = firstEl(inf, "total");
   const icmsTot = total ? firstEl(total, "ICMSTot") : null;
 
@@ -156,14 +237,23 @@ function parseXml(content: string): ParsedNFe | null {
 
   const emit_cnpj = digitsOnly(textOf(emit, "CNPJ") ?? textOf(emit, "CPF"));
   const emit_nome = textOf(emit, "xNome");
+  const emit_uf = textOf(enderEmit, "UF");
+  const emit_municipio = textOf(enderEmit, "xMun");
+  const emit_endereco = montaEndereco(enderEmit);
+
   const dest_cnpj = digitsOnly(textOf(dest, "CNPJ") ?? textOf(dest, "CPF"));
   const dest_nome = textOf(dest, "xNome");
+  const dest_uf = textOf(enderDest, "UF");
+  const dest_municipio = textOf(enderDest, "xMun");
+  const dest_endereco = montaEndereco(enderDest);
+
   const valor_total = toNumber(textOf(icmsTot, "vNF"));
 
   const dets = allEls(inf, "det");
   const itens = dets.map((det, idx) => {
     const nItem = parseInt(det.getAttribute("nItem") ?? String(idx + 1), 10);
     const prod = firstEl(det, "prod");
+    const impostos = parseImpostosItem(det);
     return {
       numero_item: isNaN(nItem) ? idx + 1 : nItem,
       codigo_produto: textOf(prod, "cProd"),
@@ -173,14 +263,27 @@ function parseXml(content: string): ParsedNFe | null {
       valor: toNumber(textOf(prod, "vProd")),
       qCom: toNumber(textOf(prod, "qCom")),
       uCom: textOf(prod, "uCom"),
+      vUnCom: toNumber(textOf(prod, "vUnCom")),
+      vDesc: toNumber(textOf(prod, "vDesc")),
       raw: {
-        cProd: textOf(prod, "cProd"),
-        xProd: textOf(prod, "xProd"),
-        NCM: textOf(prod, "NCM"),
-        CFOP: textOf(prod, "CFOP"),
-        vProd: textOf(prod, "vProd"),
-        qCom: textOf(prod, "qCom"),
-        uCom: textOf(prod, "uCom"),
+        produto: {
+          cProd: textOf(prod, "cProd"),
+          xProd: textOf(prod, "xProd"),
+          NCM: textOf(prod, "NCM"),
+          CFOP: textOf(prod, "CFOP"),
+          vProd: textOf(prod, "vProd"),
+          qCom: textOf(prod, "qCom"),
+          uCom: textOf(prod, "uCom"),
+          vUnCom: textOf(prod, "vUnCom"),
+          vDesc: textOf(prod, "vDesc"),
+          vFrete: textOf(prod, "vFrete"),
+          vSeg: textOf(prod, "vSeg"),
+          vOutro: textOf(prod, "vOutro"),
+        },
+        icms: impostos.icms,
+        ipi: impostos.ipi,
+        pis: impostos.pis,
+        cofins: impostos.cofins,
       },
     };
   });
@@ -193,8 +296,14 @@ function parseXml(content: string): ParsedNFe | null {
     tpNF,
     emit_cnpj: emit_cnpj || null,
     emit_nome,
+    emit_uf,
+    emit_municipio,
+    emit_endereco,
     dest_cnpj: dest_cnpj || null,
     dest_nome,
+    dest_uf,
+    dest_municipio,
+    dest_endereco,
     valor_total,
     itens,
     raw: {
@@ -203,8 +312,8 @@ function parseXml(content: string): ParsedNFe | null {
       serie,
       emissao_nfe,
       tpNF,
-      emit: { cnpj: emit_cnpj, nome: emit_nome },
-      dest: { cnpj: dest_cnpj, nome: dest_nome },
+      emit: { cnpj: emit_cnpj, nome: emit_nome, uf: emit_uf, municipio: emit_municipio, endereco: emit_endereco },
+      dest: { cnpj: dest_cnpj, nome: dest_nome, uf: dest_uf, municipio: dest_municipio, endereco: dest_endereco },
       valor_total,
     },
   };
