@@ -704,6 +704,18 @@ export default function ClassificacaoNFe() {
                 {profile?.role === "escritorio" &&
                   (competencia.status === "concluida" || competencia.status === "exportada") && (
                   <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setHistoricoOpen(true)}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    <History className="h-3.5 w-3.5" />
+                    Histórico
+                  </Button>
+                )}
+                {profile?.role === "escritorio" &&
+                  (competencia.status === "concluida" || competencia.status === "exportada") && (
+                  <Button
                     size="sm"
                     onClick={handleExportarTxt}
                     disabled={exportando}
