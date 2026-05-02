@@ -83,7 +83,8 @@ export default function Configuracoes() {
         from_name: form.from_name.trim() || null,
         endereco_completo: form.endereco_completo.trim() || null,
         telefone: form.telefone.trim() || null,
-      })
+        sieg_api_key: form.sieg_api_key.trim() || null,
+      } as any)
       .eq("id", 1);
     setSaving(false);
     if (error) {
