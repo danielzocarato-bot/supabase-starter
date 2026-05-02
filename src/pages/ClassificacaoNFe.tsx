@@ -149,9 +149,24 @@ export default function ClassificacaoNFe() {
   const [itens, setItens] = useState<ItemNFe[]>([]);
   const [notasMapState, setNotasMapState] = useState<Map<string, NotaInfo>>(new Map());
 
-  const [filtro, setFiltro] = useState<"todos" | "aguardando" | "classificados">("todos");
-  const [buscaInput, setBuscaInput] = useState("");
-  const [busca, setBusca] = useState("");
+  // Filtro e busca persistidos na URL
+  const filtro = ((): "todos" | "aguardando" | "classificados" => {
+    const f = searchParams.get("filtro");
+    if (f === "aguardando" || f === "classificados") return f;
+    return "todos";
+  })();
+  const setFiltro = (f: "todos" | "aguardando" | "classificados") => {
+    const sp = new URLSearchParams(searchParams);
+    if (f === "todos") sp.delete("filtro"); else sp.set("filtro", f);
+    setSearchParams(sp, { replace: true });
+  };
+  const buscaInput = searchParams.get("q") ?? "";
+  const setBuscaInput = (v: string) => {
+    const sp = new URLSearchParams(searchParams);
+    if (!v) sp.delete("q"); else sp.set("q", v);
+    setSearchParams(sp, { replace: true });
+  };
+  const [busca, setBusca] = useState(buscaInput);
   const [showSaveIndicator, setShowSaveIndicator] = useState(false);
   const [pisca, setPisca] = useState<Set<string>>(new Set());
   const [exportando, setExportando] = useState(false);
@@ -419,6 +434,36 @@ export default function ClassificacaoNFe() {
     });
     return arr;
   }, [itens, itensFiltrados, notasMapState]);
+
+  // Continuar de onde parei: scrolla para o primeiro grupo pendente
+  useEffect(() => {
+    if (loading || !competencia) return;
+    if (competencia.status !== "aberta") return;
+    const totalClassif = itensElegiveis.filter((i) => i.acumulador_id).length;
+    if (totalClassif === 0) return;
+    const t = setTimeout(() => {
+      let el: Element | null = null;
+      if (modo === "cfop") {
+        const grupoPendente = gruposCfop.find((g) => g.classificados < g.itens.length);
+        if (grupoPendente) {
+          el = document.querySelector(`[data-cfop-id="${grupoPendente.cfop}"]`);
+        }
+      } else {
+        const notaPendente = gruposNota.find((g) => g.classificados < g.total);
+        if (notaPendente) {
+          el = document.querySelector(`[data-nota-id="${notaPendente.notaId}"]`);
+        }
+      }
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.classList.add("ring-2", "ring-brand", "ring-offset-2");
+      setTimeout(() => {
+        el!.classList.remove("ring-2", "ring-brand", "ring-offset-2");
+      }, 2000);
+    }, 300);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, modo]);
 
   // Save indicator
   const saveTimerRef = useRef<number | null>(null);
@@ -1160,7 +1205,7 @@ function NotaCard({
   const tipoLabel = tipoIsSaida ? "Saída" : "Entrada";
 
   return (
-    <Card className={`rounded-xl overflow-hidden ${cancelada ? "opacity-70" : ""}`}>
+    <Card data-nota-id={grupo.notaId} className={`rounded-xl overflow-hidden ${cancelada ? "opacity-70" : ""}`}>
       <div
         className="flex items-center gap-4 p-4 hover:bg-muted/30 cursor-pointer transition-colors"
         onClick={() => setAberto((v) => !v)}
@@ -1323,7 +1368,7 @@ function GrupoCfopCard({
   const pendentes = totalGrupo - grupo.classificados;
 
   return (
-    <Card className="rounded-xl overflow-hidden">
+    <Card data-cfop-id={grupo.cfop} className="rounded-xl overflow-hidden">
       <div
         className="flex items-center gap-4 p-4 hover:bg-muted/30 cursor-pointer transition-colors"
         onClick={() => setAberto((v) => !v)}

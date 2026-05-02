@@ -37,7 +37,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import {
-  ArrowLeft, Check, CheckCircle2, ChevronLeft, ChevronRight, ChevronsUpDown,
+  ArrowDown, ArrowLeft, ArrowUp, Check, CheckCircle2, ChevronLeft, ChevronRight, ChevronsUpDown,
   Download, History, Loader2, MoreHorizontal, Search, Trash2, Undo2, X,
 } from "lucide-react";
 import {
@@ -142,10 +142,51 @@ export default function ClassificacaoNFSe() {
   const [acumuladores, setAcumuladores] = useState<Acumulador[]>([]);
   const [notas, setNotas] = useState<Nota[]>([]);
 
-  // UI state
-  const [filtro, setFiltro] = useState<"todas" | "aguardando" | "classificadas">("todas");
-  const [buscaInput, setBuscaInput] = useState("");
-  const [busca, setBusca] = useState("");
+  // UI state — filtro, busca, ordenação e página persistidos na URL
+  const filtro = ((): "todas" | "aguardando" | "classificadas" => {
+    const f = searchParams.get("filtro");
+    if (f === "aguardando" || f === "classificadas") return f;
+    return "todas";
+  })();
+  const setFiltro = (f: "todas" | "aguardando" | "classificadas") => {
+    const sp = new URLSearchParams(searchParams);
+    if (f === "todas") sp.delete("filtro"); else sp.set("filtro", f);
+    sp.delete("page");
+    setSearchParams(sp, { replace: true });
+  };
+
+  const buscaInput = searchParams.get("q") ?? "";
+  const setBuscaInput = (v: string) => {
+    const sp = new URLSearchParams(searchParams);
+    if (!v) sp.delete("q"); else sp.set("q", v);
+    sp.delete("page");
+    setSearchParams(sp, { replace: true });
+  };
+  const [busca, setBusca] = useState(buscaInput);
+
+  type OrdemCampo = "emissao" | "prestador" | "valor" | "numero";
+  type OrdemDir = "asc" | "desc";
+  const ordemCampo: OrdemCampo = (() => {
+    const s = searchParams.get("sort");
+    if (s === "prestador" || s === "valor" || s === "numero") return s;
+    return "emissao";
+  })();
+  const ordemDir: OrdemDir = searchParams.get("dir") === "desc" ? "desc" : "asc";
+  const setOrdem = (campo: OrdemCampo) => {
+    const sp = new URLSearchParams(searchParams);
+    if (campo === ordemCampo) {
+      sp.set("dir", ordemDir === "asc" ? "desc" : "asc");
+    } else {
+      sp.set("sort", campo);
+      sp.set("dir", "asc");
+    }
+    if (sp.get("sort") === "emissao" && sp.get("dir") === "asc") {
+      sp.delete("sort");
+      sp.delete("dir");
+    }
+    setSearchParams(sp, { replace: true });
+  };
+
   const [mostrarCanceladas, setMostrarCanceladas] = useState(false);
   const [selecionadas, setSelecionadas] = useState<Set<string>>(new Set());
   const [bulkAcumulador, setBulkAcumulador] = useState<string>("");
@@ -279,18 +320,56 @@ export default function ClassificacaoNFSe() {
     });
   }, [notas, busca, filtro, mostrarCanceladas]);
 
+  // Ordenação aplicada antes da paginação
+  const filtradasOrdenadas = useMemo(() => {
+    const sortFn = (a: Nota, b: Nota) => {
+      let cmp = 0;
+      if (ordemCampo === "emissao") {
+        cmp = (a.emissao_nfe || "").localeCompare(b.emissao_nfe || "");
+      } else if (ordemCampo === "prestador") {
+        cmp = (a.prestador_razao || "").localeCompare(b.prestador_razao || "", "pt-BR");
+      } else if (ordemCampo === "valor") {
+        cmp = (a.valor_nfe || 0) - (b.valor_nfe || 0);
+      } else if (ordemCampo === "numero") {
+        cmp = (a.numero_nfe || "").localeCompare(b.numero_nfe || "", "pt-BR", { numeric: true });
+      }
+      return ordemDir === "asc" ? cmp : -cmp;
+    };
+    return [...filtradas].sort(sortFn);
+  }, [filtradas, ordemCampo, ordemDir]);
+
   // Reset página se ficar fora do range
   useEffect(() => {
-    const totalPag = Math.max(1, Math.ceil(filtradas.length / PAGE_SIZE));
+    const totalPag = Math.max(1, Math.ceil(filtradasOrdenadas.length / PAGE_SIZE));
     if (page > totalPag) setPage(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filtradas.length]);
+  }, [filtradasOrdenadas.length]);
 
-  const totalPag = Math.max(1, Math.ceil(filtradas.length / PAGE_SIZE));
+  const totalPag = Math.max(1, Math.ceil(filtradasOrdenadas.length / PAGE_SIZE));
   const pageItems = useMemo(
-    () => filtradas.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
-    [filtradas, page],
+    () => filtradasOrdenadas.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [filtradasOrdenadas, page],
   );
+
+  // Continuar de onde parei: scrolla para a primeira nota não-classificada
+  useEffect(() => {
+    if (loading || !competencia) return;
+    if (competencia.status !== "aberta") return;
+    const totalClassif = notas.filter((n) => !n.cancelada && n.acumulador_id).length;
+    const primeiraNaoClassif = notas.find((n) => !n.cancelada && !n.acumulador_id);
+    if (totalClassif === 0 || !primeiraNaoClassif) return;
+    const t = setTimeout(() => {
+      const el = document.querySelector(`[data-nota-id="${primeiraNaoClassif.id}"]`);
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.classList.add("ring-2", "ring-brand", "ring-offset-2");
+      setTimeout(() => {
+        el.classList.remove("ring-2", "ring-brand", "ring-offset-2");
+      }, 2000);
+    }, 300);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
 
   // Auto-save indicator
   const saveTimerRef = useRef<number | null>(null);
@@ -844,7 +923,7 @@ export default function ClassificacaoNFSe() {
         </AnimatePresence>
 
         {/* Tabela */}
-        {filtradas.length === 0 ? (
+        {filtradasOrdenadas.length === 0 ? (
           <Card className="p-12 rounded-xl text-center space-y-3">
             {notas.length === 0 ? (
               <>
@@ -877,13 +956,31 @@ export default function ClassificacaoNFSe() {
                       aria-label="Selecionar todas da página"
                     />
                   </TableHead>
-                  <TableHead>Nº NFe</TableHead>
-                  <TableHead>Emissão</TableHead>
-                  <TableHead>Prestador</TableHead>
+                  <TableHead>
+                    <HeaderSortavel campo="numero" ordemCampo={ordemCampo} ordemDir={ordemDir} onClick={setOrdem}>
+                      Nº NFe
+                    </HeaderSortavel>
+                  </TableHead>
+                  <TableHead>
+                    <HeaderSortavel campo="emissao" ordemCampo={ordemCampo} ordemDir={ordemDir} onClick={setOrdem}>
+                      Emissão
+                    </HeaderSortavel>
+                  </TableHead>
+                  <TableHead>
+                    <HeaderSortavel campo="prestador" ordemCampo={ordemCampo} ordemDir={ordemDir} onClick={setOrdem}>
+                      Prestador
+                    </HeaderSortavel>
+                  </TableHead>
                   <TableHead>CNPJ</TableHead>
                   <TableHead>Município</TableHead>
                   <TableHead>CNAE</TableHead>
-                  <TableHead className="text-right">Valor</TableHead>
+                  <TableHead className="text-right">
+                    <div className="flex justify-end">
+                      <HeaderSortavel campo="valor" ordemCampo={ordemCampo} ordemDir={ordemDir} onClick={setOrdem}>
+                        Valor
+                      </HeaderSortavel>
+                    </div>
+                  </TableHead>
                   <TableHead className="w-[300px]">Acumulador</TableHead>
                 </TableRow>
               </TableHeader>
@@ -893,6 +990,7 @@ export default function ClassificacaoNFSe() {
                   return (
                     <motion.tr
                       key={n.id}
+                      data-nota-id={n.id}
                       animate={
                         isPiscando
                           ? { backgroundColor: ["hsl(var(--success) / 0.15)", "hsl(var(--success) / 0)"] }
@@ -955,7 +1053,7 @@ export default function ClassificacaoNFSe() {
             {totalPag > 1 && (
               <div className="flex items-center justify-between px-4 py-3 border-t bg-muted/20">
                 <p className="text-xs text-muted-foreground tabular-nums">
-                  Mostrando {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtradas.length)} de {filtradas.length}
+                  Mostrando {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtradasOrdenadas.length)} de {filtradasOrdenadas.length}
                 </p>
                 <div className="flex items-center gap-2">
                   <Button
@@ -1093,6 +1191,33 @@ export default function ClassificacaoNFSe() {
 // ============================================================
 // Subcomponentes
 // ============================================================
+
+type OrdemCampoNFSe = "emissao" | "prestador" | "valor" | "numero";
+type OrdemDirNFSe = "asc" | "desc";
+
+function HeaderSortavel({
+  children, campo, ordemCampo, ordemDir, onClick,
+}: {
+  children: React.ReactNode;
+  campo: OrdemCampoNFSe;
+  ordemCampo: OrdemCampoNFSe;
+  ordemDir: OrdemDirNFSe;
+  onClick: (c: OrdemCampoNFSe) => void;
+}) {
+  const ativo = ordemCampo === campo;
+  return (
+    <button
+      type="button"
+      onClick={() => onClick(campo)}
+      className={`inline-flex items-center gap-1 hover:text-foreground transition-colors ${
+        ativo ? "text-foreground" : "text-muted-foreground"
+      }`}
+    >
+      {children}
+      {ativo && (ordemDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />)}
+    </button>
+  );
+}
 
 function FiltroChip({
   ativo, label, count, onClick,
