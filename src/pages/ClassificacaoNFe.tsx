@@ -170,6 +170,7 @@ export default function ClassificacaoNFe() {
   const [pendentesModalOpen, setPendentesModalOpen] = useState(false);
   const [pendentesLista, setPendentesLista] = useState<string[]>([]);
   const [pendentesTipo, setPendentesTipo] = useState<string | null>(null);
+  const [excluirOpen, setExcluirOpen] = useState(false);
 
   // Modo persiste em ?modo=cfop|nota (default cfop)
   const modo: Modo = (searchParams.get("modo") as Modo) === "nota" ? "nota" : "cfop";
