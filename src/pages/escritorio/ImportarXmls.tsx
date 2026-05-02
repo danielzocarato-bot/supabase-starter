@@ -565,7 +565,7 @@ export default function ImportarXmls() {
               <div className="flex items-center justify-end gap-3 pt-2">
                 <Button
                   onClick={handleSubmit}
-                  disabled={!podeSubmeter}
+                  disabled={!podeSubmeterUpload}
                   className="bg-brand text-brand-foreground hover:bg-brand/90"
                 >
                   {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
