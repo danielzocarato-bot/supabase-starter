@@ -27,13 +27,6 @@ function ultimoDiaMes(ano: number, mes: number): number {
 }
 
 interface SiegBody {
-  ApiKey?: string;
-  Email?: string;
-  Senha?: string;
-  User?: string;
-  Usuario?: string;
-  Username?: string;
-  Password?: string;
   XmlType: number;
   Take: number;
   Skip: number;
@@ -47,27 +40,18 @@ interface SiegBody {
 }
 
 async function fetchSiegBatch(
-  creds: { apiKey: string; email: string; password: string },
+  apiKey: string,
   body: SiegBody,
 ): Promise<string[]> {
-  const url = SIEG_URL;
+  // SIEG espera api_key na querystring (formato oficial da doc)
+  const url = `${SIEG_URL}?api_key=${encodeURIComponent(apiKey)}`;
   const res = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "Accept": "application/json",
-      "x-api-key": creds.apiKey,
     },
-    body: JSON.stringify({
-      ...body,
-      ApiKey: creds.apiKey,
-      Email: creds.email,
-      Senha: creds.password,
-      User: creds.email,
-      Usuario: creds.email,
-      Username: creds.email,
-      Password: creds.password,
-    }),
+    body: JSON.stringify(body),
   });
 
   if (!res.ok) {
