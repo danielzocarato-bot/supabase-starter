@@ -236,7 +236,7 @@ export default function ImportarXmls() {
   }
 
   async function handleSubmit() {
-    if (!podeSubmeter || !tipo) return;
+    if (!podeSubmeterUpload || !tipo) return;
     setSubmitting(true);
     setResultado(null);
     try {
