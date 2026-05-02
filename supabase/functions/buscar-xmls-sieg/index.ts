@@ -140,16 +140,14 @@ Deno.serve(async (req) => {
   // Carrega API key
   const { data: cfg } = await admin
     .from("configuracoes_escritorio")
-    .select("sieg_api_key, sieg_email, sieg_password")
+    .select("sieg_api_key")
     .eq("id", 1)
     .maybeSingle();
   const apiKey = (cfg?.sieg_api_key ?? "").trim();
-  const email = (cfg?.sieg_email ?? "").trim();
-  const password = (cfg?.sieg_password ?? "").trim();
-  if (!apiKey || !email || !password) {
+  if (!apiKey) {
     return json({
       ok: false,
-      error: "Credenciais SIEG incompletas. Configure API Key, e-mail e senha em Configurações → Escritório.",
+      error: "API Key SIEG não configurada. Configure em Configurações → Escritório.",
     }, 400);
   }
 
