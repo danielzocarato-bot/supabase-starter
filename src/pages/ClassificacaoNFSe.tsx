@@ -990,6 +990,7 @@ export default function ClassificacaoNFSe() {
                   return (
                     <motion.tr
                       key={n.id}
+                      data-nota-id={n.id}
                       animate={
                         isPiscando
                           ? { backgroundColor: ["hsl(var(--success) / 0.15)", "hsl(var(--success) / 0)"] }
