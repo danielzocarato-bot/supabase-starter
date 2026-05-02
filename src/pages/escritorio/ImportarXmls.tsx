@@ -100,6 +100,8 @@ export default function ImportarXmls() {
   const [submitting, setSubmitting] = useState(false);
   const [progressIdx, setProgressIdx] = useState(0);
   const [resultado, setResultado] = useState<Resultado | null>(null);
+  const [modo, setModo] = useState<"upload" | "sieg">("upload");
+  const [siegFiltroData, setSiegFiltroData] = useState<"emissao" | "upload">("emissao");
 
   // Carrega clientes ativos
   useEffect(() => {
