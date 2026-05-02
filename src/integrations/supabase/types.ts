@@ -49,6 +49,38 @@ export type Database = {
           },
         ]
       }
+      cliente_operacoes: {
+        Row: {
+          ativo: boolean | null
+          cliente_id: string
+          created_at: string | null
+          layout_export: string
+          tipo: Database["public"]["Enums"]["tipo_operacao"]
+        }
+        Insert: {
+          ativo?: boolean | null
+          cliente_id: string
+          created_at?: string | null
+          layout_export: string
+          tipo: Database["public"]["Enums"]["tipo_operacao"]
+        }
+        Update: {
+          ativo?: boolean | null
+          cliente_id?: string
+          created_at?: string | null
+          layout_export?: string
+          tipo?: Database["public"]["Enums"]["tipo_operacao"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cliente_operacoes_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clientes: {
         Row: {
           ativo: boolean
@@ -99,6 +131,7 @@ export type Database = {
           notas_classificadas: number
           periodo: string
           status: Database["public"]["Enums"]["competencia_status"]
+          tipo: Database["public"]["Enums"]["tipo_operacao"] | null
           total_notas: number
         }
         Insert: {
@@ -111,6 +144,7 @@ export type Database = {
           notas_classificadas?: number
           periodo: string
           status?: Database["public"]["Enums"]["competencia_status"]
+          tipo?: Database["public"]["Enums"]["tipo_operacao"] | null
           total_notas?: number
         }
         Update: {
@@ -123,6 +157,7 @@ export type Database = {
           notas_classificadas?: number
           periodo?: string
           status?: Database["public"]["Enums"]["competencia_status"]
+          tipo?: Database["public"]["Enums"]["tipo_operacao"] | null
           total_notas?: number
         }
         Relationships: [
@@ -226,6 +261,7 @@ export type Database = {
         Row: {
           acumulador_id: string | null
           cancelada: boolean
+          chave_nfe: string | null
           classificado_em: string | null
           classificado_por: string | null
           cnae_descricao: string | null
@@ -246,6 +282,8 @@ export type Database = {
           prestador_uf: string | null
           raw_data: Json | null
           servico_municipal: string | null
+          tipo_documento: string | null
+          tipo_operacao_nfe: string | null
           updated_at: string
           valor_contabil: number | null
           valor_nfe: number | null
@@ -253,6 +291,7 @@ export type Database = {
         Insert: {
           acumulador_id?: string | null
           cancelada?: boolean
+          chave_nfe?: string | null
           classificado_em?: string | null
           classificado_por?: string | null
           cnae_descricao?: string | null
@@ -273,6 +312,8 @@ export type Database = {
           prestador_uf?: string | null
           raw_data?: Json | null
           servico_municipal?: string | null
+          tipo_documento?: string | null
+          tipo_operacao_nfe?: string | null
           updated_at?: string
           valor_contabil?: number | null
           valor_nfe?: number | null
@@ -280,6 +321,7 @@ export type Database = {
         Update: {
           acumulador_id?: string | null
           cancelada?: boolean
+          chave_nfe?: string | null
           classificado_em?: string | null
           classificado_por?: string | null
           cnae_descricao?: string | null
@@ -300,6 +342,8 @@ export type Database = {
           prestador_uf?: string | null
           raw_data?: Json | null
           servico_municipal?: string | null
+          tipo_documento?: string | null
+          tipo_operacao_nfe?: string | null
           updated_at?: string
           valor_contabil?: number | null
           valor_nfe?: number | null
@@ -324,6 +368,79 @@ export type Database = {
             columns: ["competencia_id"]
             isOneToOne: false
             referencedRelation: "competencias"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notas_fiscais_itens: {
+        Row: {
+          acumulador_id: string | null
+          cfop: string | null
+          classificado_em: string | null
+          classificado_por: string | null
+          codigo_produto: string | null
+          created_at: string | null
+          descricao_produto: string | null
+          id: string
+          ncm: string | null
+          nota_id: string
+          numero_item: number
+          raw_data: Json | null
+          updated_at: string | null
+          valor: number | null
+        }
+        Insert: {
+          acumulador_id?: string | null
+          cfop?: string | null
+          classificado_em?: string | null
+          classificado_por?: string | null
+          codigo_produto?: string | null
+          created_at?: string | null
+          descricao_produto?: string | null
+          id?: string
+          ncm?: string | null
+          nota_id: string
+          numero_item: number
+          raw_data?: Json | null
+          updated_at?: string | null
+          valor?: number | null
+        }
+        Update: {
+          acumulador_id?: string | null
+          cfop?: string | null
+          classificado_em?: string | null
+          classificado_por?: string | null
+          codigo_produto?: string | null
+          created_at?: string | null
+          descricao_produto?: string | null
+          id?: string
+          ncm?: string | null
+          nota_id?: string
+          numero_item?: number
+          raw_data?: Json | null
+          updated_at?: string | null
+          valor?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notas_fiscais_itens_acumulador_id_fkey"
+            columns: ["acumulador_id"]
+            isOneToOne: false
+            referencedRelation: "acumuladores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notas_fiscais_itens_classificado_por_fkey"
+            columns: ["classificado_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notas_fiscais_itens_nota_id_fkey"
+            columns: ["nota_id"]
+            isOneToOne: false
+            referencedRelation: "notas_fiscais"
             referencedColumns: ["id"]
           },
         ]
@@ -440,6 +557,7 @@ export type Database = {
     }
     Enums: {
       competencia_status: "aberta" | "concluida" | "exportada"
+      tipo_operacao: "nfse_tomada" | "nfe_entrada" | "nfe_saida"
       user_role: "escritorio" | "cliente"
     }
     CompositeTypes: {
@@ -569,6 +687,7 @@ export const Constants = {
   public: {
     Enums: {
       competencia_status: ["aberta", "concluida", "exportada"],
+      tipo_operacao: ["nfse_tomada", "nfe_entrada", "nfe_saida"],
       user_role: ["escritorio", "cliente"],
     },
   },
