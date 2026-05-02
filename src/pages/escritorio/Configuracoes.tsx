@@ -15,6 +15,7 @@ type ConfigEscritorio = {
   from_name: string | null;
   endereco_completo: string | null;
   telefone: string | null;
+  sieg_api_key: string | null;
   updated_at: string | null;
 };
 
