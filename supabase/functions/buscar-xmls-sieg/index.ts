@@ -137,13 +137,15 @@ Deno.serve(async (req) => {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
-  // Carrega API key
+  // Carrega API key (sanitiza invisíveis: BOM, ZWSP, etc)
   const { data: cfg } = await admin
     .from("configuracoes_escritorio")
     .select("sieg_api_key")
     .eq("id", 1)
     .maybeSingle();
-  const apiKey = (cfg?.sieg_api_key ?? "").trim();
+  const apiKey = (cfg?.sieg_api_key ?? "")
+    .replace(/[\u200B-\u200D\uFEFF\u00A0]/g, "")
+    .trim();
   if (!apiKey) {
     return json({
       ok: false,
