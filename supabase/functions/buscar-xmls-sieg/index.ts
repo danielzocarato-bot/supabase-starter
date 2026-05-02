@@ -58,8 +58,8 @@ async function fetchSiegBatch(
     const errText = await res.text().catch(() => "");
     let parsed: any;
     try { parsed = JSON.parse(errText); } catch { /* ignore */ }
-    const msg = parsed?.message ?? errText ?? `HTTP ${res.status}`;
-    throw new Error(`SIEG: ${msg}`);
+    const msg = parsed?.Message ?? parsed?.message ?? errText ?? `HTTP ${res.status}`;
+    throw new Error(`SIEG ${res.status}: ${msg}`);
   }
 
   let text = await res.text();
@@ -137,13 +137,15 @@ Deno.serve(async (req) => {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
-  // Carrega API key
+  // Carrega API key (sanitiza invisíveis: BOM, ZWSP, etc)
   const { data: cfg } = await admin
     .from("configuracoes_escritorio")
     .select("sieg_api_key")
     .eq("id", 1)
     .maybeSingle();
-  const apiKey = (cfg?.sieg_api_key ?? "").trim();
+  const apiKey = (cfg?.sieg_api_key ?? "")
+    .replace(/[\u200B-\u200D\uFEFF\u00A0]/g, "")
+    .trim();
   if (!apiKey) {
     return json({
       ok: false,
@@ -216,8 +218,15 @@ Deno.serve(async (req) => {
     } catch (e: any) {
       if (page === 0) {
         console.error("[buscar-xmls-sieg] Falha primeira chamada:", e?.message);
-        // Erros 404 do SIEG quando não há nenhuma nota
         const msg = String(e?.message ?? "");
+        // Auth: chave rejeitada pela SIEG
+        if (/n[ãa]o\s*autenticado|api\s*key\s*n[ãa]o|unauthorized|401/i.test(msg)) {
+          return json({
+            ok: false,
+            error: "API Key SIEG rejeitada. Verifique em Configurações → Escritório se a chave está correta, ativa no painel SIEG (sem espaços ou caracteres invisíveis) e se a integração API está habilitada para a sua conta.",
+          }, 401);
+        }
+        // Sem registros
         if (/sem.*registros|nenhum|not.*found|404/i.test(msg)) {
           return json({
             ok: false,
