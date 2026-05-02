@@ -2,6 +2,39 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { DOMParser } from "https://esm.sh/@xmldom/xmldom@0.8.10";
 import JSZip from "https://esm.sh/jszip@3.10.1";
 
+const MAX_EXTRACTED_FILE_BYTES = 50 * 1024 * 1024;
+
+// Boot-time probe: tenta carregar libs opcionais e loga status
+type LibStatus = { ok: boolean; error?: string };
+const libStatus: { jszip: LibStatus; unrar: LibStatus; sevenZip: LibStatus } = {
+  jszip: { ok: true },
+  unrar: { ok: false },
+  sevenZip: { ok: false },
+};
+
+let unrarMod: any = null;
+let sevenZipMod: any = null;
+
+try {
+  unrarMod = await import("https://esm.sh/node-unrar-js@2.0.2");
+  libStatus.unrar = { ok: true };
+  console.log("[importar-xmls-nfe][boot] node-unrar-js@2.0.2 carregado com sucesso");
+} catch (e: any) {
+  libStatus.unrar = { ok: false, error: e?.message ?? String(e) };
+  console.error("[importar-xmls-nfe][boot] FALHA ao carregar node-unrar-js@2.0.2:", e?.message ?? e, e?.stack);
+}
+
+try {
+  sevenZipMod = await import("https://esm.sh/7zip-min@1.4.5");
+  libStatus.sevenZip = { ok: true };
+  console.log("[importar-xmls-nfe][boot] 7zip-min@1.4.5 carregado com sucesso");
+} catch (e: any) {
+  libStatus.sevenZip = { ok: false, error: e?.message ?? String(e) };
+  console.error("[importar-xmls-nfe][boot] FALHA ao carregar 7zip-min@1.4.5:", e?.message ?? e, e?.stack);
+}
+
+console.log("[importar-xmls-nfe][boot] Status libs:", JSON.stringify(libStatus));
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
