@@ -879,6 +879,36 @@ export default function ClassificacaoNFe() {
           onClassificarItem={(itemId, aid) => aplicarAcumuladorIds([itemId], aid, false)}
         />
 
+        {/* Dialog: pendentes de exportação */}
+        <Dialog open={pendentesModalOpen} onOpenChange={setPendentesModalOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>
+                {pendentesTipo === "classificacao"
+                  ? "Itens pendentes de classificação"
+                  : "Pendências encontradas"}
+              </DialogTitle>
+              <DialogDescription>
+                {pendentesTipo === "classificacao"
+                  ? "Classifique os itens abaixo antes de gerar o arquivo TXT."
+                  : "Resolva as pendências abaixo para prosseguir com a exportação."}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="max-h-[50vh] overflow-y-auto rounded-md border bg-muted/30 p-3 text-sm">
+              <ul className="space-y-1.5">
+                {pendentesLista.map((p, idx) => (
+                  <li key={idx} className="leading-snug">• {p}</li>
+                ))}
+              </ul>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setPendentesModalOpen(false)}>
+                Fechar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         {/* AlertDialog: sobrescrita bulk */}
         <AlertDialog
           open={!!confirmBulk}
