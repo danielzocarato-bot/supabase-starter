@@ -218,8 +218,15 @@ Deno.serve(async (req) => {
     } catch (e: any) {
       if (page === 0) {
         console.error("[buscar-xmls-sieg] Falha primeira chamada:", e?.message);
-        // Erros 404 do SIEG quando não há nenhuma nota
         const msg = String(e?.message ?? "");
+        // Auth: chave rejeitada pela SIEG
+        if (/n[ãa]o\s*autenticado|api\s*key\s*n[ãa]o|unauthorized|401/i.test(msg)) {
+          return json({
+            ok: false,
+            error: "API Key SIEG rejeitada. Verifique em Configurações → Escritório se a chave está correta, ativa no painel SIEG (sem espaços ou caracteres invisíveis) e se a integração API está habilitada para a sua conta.",
+          }, 401);
+        }
+        // Sem registros
         if (/sem.*registros|nenhum|not.*found|404/i.test(msg)) {
           return json({
             ok: false,
