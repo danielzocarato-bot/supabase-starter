@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
@@ -234,7 +234,7 @@ export function NotaDrawerNFe({
                     {itens.map((i) => {
                       const isPiscando = pisca.has(i.id);
                       return (
-                        <FragmentWithKey key={i.id}>
+                        <Fragment key={i.id}>
                           <motion.tr
                             animate={
                               isPiscando
@@ -267,7 +267,7 @@ export function NotaDrawerNFe({
                               />
                             </td>
                           </tr>
-                        </FragmentWithKey>
+                        </Fragment>
                       );
                     })}
                   </TableBody>
