@@ -176,6 +176,7 @@ export type Database = {
           from_name: string | null
           id: number
           reply_to_email: string | null
+          sieg_api_key: string | null
           telefone: string | null
           updated_at: string | null
           updated_by: string | null
@@ -185,6 +186,7 @@ export type Database = {
           from_name?: string | null
           id?: number
           reply_to_email?: string | null
+          sieg_api_key?: string | null
           telefone?: string | null
           updated_at?: string | null
           updated_by?: string | null
@@ -194,6 +196,7 @@ export type Database = {
           from_name?: string | null
           id?: number
           reply_to_email?: string | null
+          sieg_api_key?: string | null
           telefone?: string | null
           updated_at?: string | null
           updated_by?: string | null
