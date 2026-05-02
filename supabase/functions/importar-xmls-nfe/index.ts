@@ -453,6 +453,13 @@ Deno.serve(async (req) => {
   }
 
   if (xmls.length === 0) {
+    if (formato_falho) {
+      return json({
+        ok: false,
+        error: `Formato .${formato_falho} ainda não é suportado em servidor. Descompacte localmente e suba os XMLs.`,
+        formato_falho,
+      }, 400);
+    }
     return json({ ok: false, error: "Nenhum XML encontrado nos arquivos enviados." }, 400);
   }
 
