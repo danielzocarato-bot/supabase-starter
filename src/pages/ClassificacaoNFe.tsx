@@ -21,12 +21,19 @@ import {
 import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import {
   ArrowLeft, ArrowDownToLine, ArrowUpFromLine, CheckCircle2, ChevronDown,
-  ChevronRight, ChevronsUpDown, Layers, List, Loader2, Search,
+  ChevronRight, ChevronsUpDown, Download, Eye, Layers, List, Loader2, Search, Undo2,
 } from "lucide-react";
 import { StatusCompetenciaBadge } from "@/components/StatusCompetenciaBadge";
+import { formatCNPJ } from "@/lib/format";
+import { useStatusActions } from "@/lib/useStatusActions";
+import { NotaDrawerNFe, type DrawerNota, type DrawerItem } from "@/components/NotaDrawerNFe";
 
 const MESES_PT = [
   "Janeiro","Fevereiro","Março","Abril","Maio","Junho",
@@ -40,6 +47,23 @@ function formatPeriodo(p: string) {
 function formatBRL(v: number | null | undefined) {
   if (v == null) return "—";
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(v));
+}
+function formatDateBR(d: string | null | undefined) {
+  if (!d) return "—";
+  const [y, m, day] = d.split("-");
+  if (!y || !m || !day) return d;
+  return `${day}/${m}/${y}`;
+}
+function formatDateTimeBR(iso: string | null | undefined) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yyyy = d.getFullYear();
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mi = String(d.getMinutes()).padStart(2, "0");
+  return `${dd}/${mm}/${yyyy} às ${hh}:${mi}`;
 }
 function normalize(s: string) {
   return (s || "")
@@ -66,6 +90,20 @@ type Acumulador = {
   id: string;
   codigo: number;
   descricao: string;
+};
+
+type NotaInfo = {
+  id: string;
+  numero_nfe: string | null;
+  chave_nfe: string | null;
+  emissao_nfe: string | null;
+  valor_nfe: number | null;
+  cancelada: boolean;
+  observacao: string | null;
+  tipo_operacao_nfe: string | null;
+  prestador_razao: string | null;
+  prestador_cnpj: string | null;
+  raw_data: any;
 };
 
 type ItemNFe = {
@@ -101,12 +139,25 @@ export default function ClassificacaoNFe() {
   const [cliente, setCliente] = useState<Cliente | null>(null);
   const [acumuladores, setAcumuladores] = useState<Acumulador[]>([]);
   const [itens, setItens] = useState<ItemNFe[]>([]);
+  const [notasMapState, setNotasMapState] = useState<Map<string, NotaInfo>>(new Map());
 
   const [filtro, setFiltro] = useState<"todos" | "aguardando" | "classificados">("todos");
   const [buscaInput, setBuscaInput] = useState("");
   const [busca, setBusca] = useState("");
   const [showSaveIndicator, setShowSaveIndicator] = useState(false);
   const [pisca, setPisca] = useState<Set<string>>(new Set());
+  const [exportando, setExportando] = useState(false);
+
+  // Drawer state
+  const [drawerNotaId, setDrawerNotaId] = useState<string | null>(null);
+
+  // Bulk overwrite confirmation
+  const [confirmBulk, setConfirmBulk] = useState<{
+    cfop: string;
+    grupoIds: string[];
+    sobrescritaIds: string[];
+    acumuladorIdNovo: string | null;
+  } | null>(null);
 
   // Modo persiste em ?modo=cfop|nota (default cfop)
   const modo: Modo = (searchParams.get("modo") as Modo) === "nota" ? "nota" : "cfop";
@@ -134,10 +185,9 @@ export default function ClassificacaoNFe() {
         .eq("id", id)
         .maybeSingle();
 
-      // Itens + nota (join via FK lógico — fazemos em duas queries pra simplificar)
       const notasReq = supabase
         .from("notas_fiscais")
-        .select("id, numero_nfe, chave_nfe, emissao_nfe, cancelada, prestador_razao, prestador_cnpj")
+        .select("id, numero_nfe, chave_nfe, emissao_nfe, valor_nfe, cancelada, observacao, tipo_operacao_nfe, prestador_razao, prestador_cnpj, raw_data")
         .eq("competencia_id", id);
 
       const [compRes, notasRes] = await Promise.all([compReq, notasReq]);
@@ -164,8 +214,23 @@ export default function ClassificacaoNFe() {
       setCompetencia(comp);
       setCliente(cli);
 
-      const notasMap = new Map<string, any>();
-      (notasRes.data ?? []).forEach((n) => notasMap.set(n.id, n));
+      const notasMap = new Map<string, NotaInfo>();
+      (notasRes.data ?? []).forEach((n: any) => {
+        notasMap.set(n.id, {
+          id: n.id,
+          numero_nfe: n.numero_nfe,
+          chave_nfe: n.chave_nfe,
+          emissao_nfe: n.emissao_nfe,
+          valor_nfe: n.valor_nfe == null ? null : Number(n.valor_nfe),
+          cancelada: !!n.cancelada,
+          observacao: n.observacao,
+          tipo_operacao_nfe: n.tipo_operacao_nfe,
+          prestador_razao: n.prestador_razao,
+          prestador_cnpj: n.prestador_cnpj,
+          raw_data: n.raw_data,
+        });
+      });
+      setNotasMapState(notasMap);
 
       const notaIds = Array.from(notasMap.keys());
       let itensData: any[] = [];
@@ -183,7 +248,7 @@ export default function ClassificacaoNFe() {
       }
 
       const merged: ItemNFe[] = itensData.map((i) => {
-        const n = notasMap.get(i.nota_id) ?? {};
+        const n = notasMap.get(i.nota_id);
         return {
           id: i.id,
           nota_id: i.nota_id,
@@ -192,14 +257,14 @@ export default function ClassificacaoNFe() {
           descricao_produto: i.descricao_produto,
           ncm: i.ncm,
           cfop: i.cfop,
-          valor: i.valor,
+          valor: i.valor == null ? null : Number(i.valor),
           acumulador_id: i.acumulador_id,
-          nota_numero: n.numero_nfe ?? null,
-          nota_chave: n.chave_nfe ?? null,
-          nota_emissao: n.emissao_nfe ?? null,
-          nota_cancelada: !!n.cancelada,
-          parceiro_razao: n.prestador_razao ?? null,
-          parceiro_cnpj: n.prestador_cnpj ?? null,
+          nota_numero: n?.numero_nfe ?? null,
+          nota_chave: n?.chave_nfe ?? null,
+          nota_emissao: n?.emissao_nfe ?? null,
+          nota_cancelada: !!n?.cancelada,
+          parceiro_razao: n?.prestador_razao ?? null,
+          parceiro_cnpj: n?.prestador_cnpj ?? null,
         };
       });
       setItens(merged);
@@ -239,6 +304,11 @@ export default function ClassificacaoNFe() {
   const aguardandoCount = totalItens - totalClassificados;
   const pct = totalItens > 0 ? (totalClassificados / totalItens) * 100 : 0;
   const readOnly = !!competencia && competencia.status !== "aberta";
+  const podeConcluir =
+    !!competencia &&
+    competencia.status === "aberta" &&
+    totalItens > 0 &&
+    totalClassificados === totalItens;
 
   // Filtragem
   const itensFiltrados = useMemo(() => {
@@ -262,7 +332,7 @@ export default function ClassificacaoNFe() {
     itens: ItemNFe[];
     valorTotal: number;
     classificados: number;
-    acumuladorComum: string | null; // id se todos compartilham; null se misto
+    acumuladorComum: string | null;
   };
   const gruposCfop = useMemo<GrupoCfop[]>(() => {
     const map = new Map<string, ItemNFe[]>();
@@ -285,6 +355,55 @@ export default function ClassificacaoNFe() {
     arr.sort((a, b) => a.cfop.localeCompare(b.cfop));
     return arr;
   }, [itensFiltrados]);
+
+  // Agrupamento por nota (modo "Por nota") — INCLUI canceladas (visualmente riscadas)
+  type GrupoNota = {
+    notaId: string;
+    info: NotaInfo;
+    itensAll: ItemNFe[];
+    itensFiltrados: ItemNFe[];
+    classificados: number;
+    total: number;
+  };
+  const gruposNota = useMemo<GrupoNota[]>(() => {
+    const filtradosPorNota = new Map<string, ItemNFe[]>();
+    itensFiltrados.forEach((i) => {
+      if (!filtradosPorNota.has(i.nota_id)) filtradosPorNota.set(i.nota_id, []);
+      filtradosPorNota.get(i.nota_id)!.push(i);
+    });
+    const allPorNota = new Map<string, ItemNFe[]>();
+    itens.forEach((i) => {
+      if (!allPorNota.has(i.nota_id)) allPorNota.set(i.nota_id, []);
+      allPorNota.get(i.nota_id)!.push(i);
+    });
+
+    // Sempre mostra notas que tem ao menos 1 item depois do filtro,
+    // e também notas canceladas se não houver filtro/busca ativa.
+    const notaIds = new Set<string>(filtradosPorNota.keys());
+
+    const arr: GrupoNota[] = [];
+    notaIds.forEach((notaId) => {
+      const info = notasMapState.get(notaId);
+      if (!info) return;
+      const all = allPorNota.get(notaId) ?? [];
+      const filt = filtradosPorNota.get(notaId) ?? [];
+      const classificados = all.filter((x) => x.acumulador_id).length;
+      arr.push({
+        notaId, info,
+        itensAll: all,
+        itensFiltrados: filt,
+        classificados,
+        total: all.length,
+      });
+    });
+    arr.sort((a, b) => {
+      const da = a.info.emissao_nfe ?? "";
+      const db = b.info.emissao_nfe ?? "";
+      if (da !== db) return da.localeCompare(db);
+      return (a.info.numero_nfe ?? "").localeCompare(b.info.numero_nfe ?? "");
+    });
+    return arr;
+  }, [itens, itensFiltrados, notasMapState]);
 
   // Save indicator
   const saveTimerRef = useRef<number | null>(null);
@@ -333,20 +452,74 @@ export default function ClassificacaoNFe() {
     [profile?.id],
   );
 
-  const aplicarAcumuladorGrupo = async (grupoIds: string[], acumuladorId: string | null) => {
-    if (readOnly || grupoIds.length === 0) return;
+  const aplicarAcumuladorIds = async (itemIds: string[], acumuladorId: string | null, isBulk: boolean) => {
+    if (readOnly || itemIds.length === 0) return;
     const snapshot = itens;
     setItens((prev) =>
       prev.map((i) =>
-        grupoIds.includes(i.id) ? { ...i, acumulador_id: acumuladorId } : i,
+        itemIds.includes(i.id) ? { ...i, acumulador_id: acumuladorId } : i,
       ),
     );
-    const ok = await persistAcumulador(grupoIds, acumuladorId, snapshot);
-    if (ok && acumuladorId) {
+    const ok = await persistAcumulador(itemIds, acumuladorId, snapshot);
+    if (ok && acumuladorId && isBulk) {
       toast.success(
-        `${grupoIds.length} ${grupoIds.length === 1 ? "item classificado" : "itens classificados"}.`,
+        `${itemIds.length} ${itemIds.length === 1 ? "item classificado" : "itens classificados"} em massa.`,
       );
     }
+  };
+
+  // Bulk com checagem de sobrescrita
+  const aplicarAcumuladorGrupo = (
+    grupoCfop: string,
+    grupoItens: ItemNFe[],
+    acumuladorIdNovo: string | null,
+  ) => {
+    if (readOnly) return;
+    const grupoIds = grupoItens.map((i) => i.id);
+    const sobrescritaIds = grupoItens
+      .filter((i) => i.acumulador_id && i.acumulador_id !== acumuladorIdNovo)
+      .map((i) => i.id);
+
+    if (acumuladorIdNovo && sobrescritaIds.length > 0) {
+      setConfirmBulk({
+        cfop: grupoCfop,
+        grupoIds,
+        sobrescritaIds,
+        acumuladorIdNovo,
+      });
+      return;
+    }
+    aplicarAcumuladorIds(grupoIds, acumuladorIdNovo, true);
+  };
+
+  // Status actions (concluir/reabrir)
+  const status = useStatusActions({
+    competencia: competencia
+      ? {
+          id: competencia.id,
+          cliente_id: competencia.cliente_id,
+          periodo: competencia.periodo,
+          status: competencia.status,
+          exportada_em: competencia.exportada_em,
+        }
+      : null,
+    setCompetencia: (c) => {
+      if (!competencia) return;
+      setCompetencia({
+        ...competencia,
+        status: c.status,
+        exportada_em: c.exportada_em,
+      });
+    },
+    cliente,
+    profile,
+    totalClassificavel: totalItens,
+  });
+
+  const handleExportarPlaceholder = () => {
+    setExportando(true);
+    setTimeout(() => setExportando(false), 400);
+    toast.info("Exportação NFe será implementada na Fase 4.");
   };
 
   // -------- Render --------
@@ -384,6 +557,28 @@ export default function ClassificacaoNFe() {
   const tipoLabel = competencia.tipo === "nfe_saida" ? "NFe Saída" : "NFe Entrada";
   const TipoIcon = competencia.tipo === "nfe_saida" ? ArrowUpFromLine : ArrowDownToLine;
   const parceiroLabel = competencia.tipo === "nfe_saida" ? "Destinatário" : "Emitente";
+
+  // Drawer current
+  const drawerNota: DrawerNota | null = drawerNotaId
+    ? (notasMapState.get(drawerNotaId) as DrawerNota | undefined) ?? null
+    : null;
+  const drawerItens: DrawerItem[] = drawerNotaId
+    ? itens
+        .filter((i) => i.nota_id === drawerNotaId)
+        .map((i) => ({
+          id: i.id,
+          numero_item: i.numero_item,
+          codigo_produto: i.codigo_produto,
+          descricao_produto: i.descricao_produto,
+          ncm: i.ncm,
+          cfop: i.cfop,
+          valor: i.valor,
+          acumulador_id: i.acumulador_id,
+        }))
+    : [];
+
+  const sobrescritaQtd = confirmBulk?.sobrescritaIds.length ?? 0;
+  const grupoQtd = confirmBulk?.grupoIds.length ?? 0;
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -427,8 +622,48 @@ export default function ClassificacaoNFe() {
                     </motion.div>
                   )}
                 </AnimatePresence>
+                {competencia.status === "concluida" && profile?.role === "escritorio" && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => status.setConfirmReabrirOpen(true)}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    <Undo2 className="h-3.5 w-3.5" />
+                    Reabrir competência
+                  </Button>
+                )}
+                {profile?.role === "escritorio" &&
+                  (competencia.status === "concluida" || competencia.status === "exportada") && (
+                  <Button
+                    size="sm"
+                    onClick={handleExportarPlaceholder}
+                    disabled={exportando}
+                    variant={competencia.status === "exportada" ? "outline" : "default"}
+                    className={
+                      competencia.status === "exportada"
+                        ? ""
+                        : "bg-brand text-brand-foreground hover:bg-brand/90"
+                    }
+                  >
+                    {exportando
+                      ? <Loader2 className="h-4 w-4 animate-spin" />
+                      : <Download className="h-4 w-4" />}
+                    {exportando
+                      ? "Processando…"
+                      : competencia.status === "exportada"
+                        ? "Re-exportar TXT"
+                        : "Exportar TXT Domínio"}
+                  </Button>
+                )}
               </div>
             </div>
+
+            {competencia.status === "exportada" && competencia.exportada_em && (
+              <p className="text-xs text-muted-foreground">
+                Última exportação: {formatDateTimeBR(competencia.exportada_em)}
+              </p>
+            )}
 
             {competencia.status !== "exportada" && (
               <div className="flex items-end justify-between gap-6">
@@ -445,8 +680,25 @@ export default function ClassificacaoNFe() {
                     {totalClassificados} de {totalItens} itens classificados
                   </p>
                 </div>
-                <div className="text-3xl font-display font-semibold tabular-nums leading-none">
-                  {Math.round(pct)}%
+                <div className="flex items-center gap-4">
+                  <div className="text-3xl font-display font-semibold tabular-nums leading-none">
+                    {Math.round(pct)}%
+                  </div>
+                  {podeConcluir && (
+                    <motion.div
+                      initial={{ scale: 0.85, opacity: 0 }}
+                      animate={{ scale: [0.85, 1.05, 1], opacity: 1 }}
+                      transition={{ duration: 0.4 }}
+                    >
+                      <Button
+                        size="lg"
+                        className="bg-brand text-brand-foreground hover:bg-brand/90"
+                        onClick={() => status.setConfirmConcluirOpen(true)}
+                      >
+                        Concluir competência
+                      </Button>
+                    </motion.div>
+                  )}
                 </div>
               </div>
             )}
@@ -537,20 +789,360 @@ export default function ClassificacaoNFe() {
                 pisca={pisca}
                 readOnly={readOnly}
                 parceiroLabel={parceiroLabel}
-                onAplicarGrupo={(aid) =>
-                  aplicarAcumuladorGrupo(g.itens.map((i) => i.id), aid)
-                }
-                onAplicarItem={(itemId, aid) => aplicarAcumuladorGrupo([itemId], aid)}
+                onAplicarGrupo={(aid) => aplicarAcumuladorGrupo(g.cfop, g.itens, aid)}
+                onAplicarItem={(itemId, aid) => aplicarAcumuladorIds([itemId], aid, false)}
               />
             ))}
           </div>
         ) : (
-          <Card className="p-12 rounded-xl text-center text-muted-foreground">
-            Modo "Por nota" chegará na Parte 3.
-          </Card>
+          <PorNotaList
+            grupos={gruposNota}
+            acumuladores={acumuladores}
+            acumMap={acumMap}
+            pisca={pisca}
+            readOnly={readOnly}
+            tipoIsSaida={competencia.tipo === "nfe_saida"}
+            onAplicarItem={(itemId, aid) => aplicarAcumuladorIds([itemId], aid, false)}
+            onAbrirDrawer={(notaId) => setDrawerNotaId(notaId)}
+          />
         )}
+
+        {/* Drawer */}
+        <NotaDrawerNFe
+          nota={drawerNota}
+          itens={drawerItens}
+          acumuladores={acumuladores}
+          readOnly={readOnly}
+          pisca={pisca}
+          onClose={() => setDrawerNotaId(null)}
+          onClassificarItem={(itemId, aid) => aplicarAcumuladorIds([itemId], aid, false)}
+        />
+
+        {/* AlertDialog: sobrescrita bulk */}
+        <AlertDialog
+          open={!!confirmBulk}
+          onOpenChange={(v) => { if (!v) setConfirmBulk(null); }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Sobrescrever classificação de itens?</AlertDialogTitle>
+              <AlertDialogDescription>
+                {sobrescritaQtd} de {grupoQtd} itens deste CFOP já têm um acumulador diferente.
+                Aplicar o novo acumulador vai sobrescrever essas escolhas. Continuar?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (!confirmBulk) return;
+                  const { grupoIds, acumuladorIdNovo } = confirmBulk;
+                  setConfirmBulk(null);
+                  aplicarAcumuladorIds(grupoIds, acumuladorIdNovo, true);
+                }}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Sobrescrever
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* AlertDialog: concluir */}
+        <AlertDialog open={status.confirmConcluirOpen} onOpenChange={status.setConfirmConcluirOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Concluir competência?</AlertDialogTitle>
+              <AlertDialogDescription>
+                {profile?.role === "cliente"
+                  ? "Ao marcar como concluída, sua contabilidade será notificada para gerar o arquivo de importação. Quer prosseguir?"
+                  : "Ao concluir, esta competência ficará disponível para exportação no formato Domínio. Você poderá reabrir caso precise ajustar."}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={status.acaoLoading}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                disabled={status.acaoLoading}
+                onClick={(e) => { e.preventDefault(); status.handleConcluir(); }}
+                className="bg-brand text-brand-foreground hover:bg-brand/90"
+              >
+                {status.acaoLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+                Concluir
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* AlertDialog: reabrir */}
+        <AlertDialog open={status.confirmReabrirOpen} onOpenChange={status.setConfirmReabrirOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Reabrir esta competência?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Os usuários cliente poderão classificar novamente.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={status.acaoLoading}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                disabled={status.acaoLoading}
+                onClick={(e) => { e.preventDefault(); status.handleReabrir(); }}
+                className="bg-brand text-brand-foreground hover:bg-brand/90"
+              >
+                {status.acaoLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+                Reabrir
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </TooltipProvider>
+  );
+}
+
+// ============================================================
+// Modo Por nota (cards expansíveis)
+// ============================================================
+
+type GrupoNotaRender = {
+  notaId: string;
+  info: NotaInfo;
+  itensAll: ItemNFe[];
+  itensFiltrados: ItemNFe[];
+  classificados: number;
+  total: number;
+};
+
+function PorNotaList({
+  grupos, acumuladores, acumMap, pisca, readOnly, tipoIsSaida,
+  onAplicarItem, onAbrirDrawer,
+}: {
+  grupos: GrupoNotaRender[];
+  acumuladores: Acumulador[];
+  acumMap: Map<string, Acumulador>;
+  pisca: Set<string>;
+  readOnly: boolean;
+  tipoIsSaida: boolean;
+  onAplicarItem: (itemId: string, acumuladorId: string | null) => void;
+  onAbrirDrawer: (notaId: string) => void;
+}) {
+  const useVirtual = grupos.length > 50;
+  const parentRef = useRef<HTMLDivElement>(null);
+  const virtualizer = useVirtualizer({
+    count: grupos.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 96,
+    overscan: 6,
+  });
+
+  if (!useVirtual) {
+    return (
+      <div className="space-y-3">
+        {grupos.map((g) => (
+          <NotaCard
+            key={g.notaId}
+            grupo={g}
+            acumuladores={acumuladores}
+            acumMap={acumMap}
+            pisca={pisca}
+            readOnly={readOnly}
+            tipoIsSaida={tipoIsSaida}
+            onAplicarItem={onAplicarItem}
+            onAbrirDrawer={onAbrirDrawer}
+          />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div ref={parentRef} className="max-h-[70vh] overflow-auto">
+      <div style={{ height: virtualizer.getTotalSize(), position: "relative" }}>
+        {virtualizer.getVirtualItems().map((vi) => {
+          const g = grupos[vi.index];
+          return (
+            <div
+              key={g.notaId}
+              ref={virtualizer.measureElement}
+              data-index={vi.index}
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                transform: `translateY(${vi.start}px)`,
+                paddingBottom: 12,
+              }}
+            >
+              <NotaCard
+                grupo={g}
+                acumuladores={acumuladores}
+                acumMap={acumMap}
+                pisca={pisca}
+                readOnly={readOnly}
+                tipoIsSaida={tipoIsSaida}
+                onAplicarItem={onAplicarItem}
+                onAbrirDrawer={onAbrirDrawer}
+              />
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function NotaCard({
+  grupo, acumuladores, acumMap, pisca, readOnly, tipoIsSaida,
+  onAplicarItem, onAbrirDrawer,
+}: {
+  grupo: GrupoNotaRender;
+  acumuladores: Acumulador[];
+  acumMap: Map<string, Acumulador>;
+  pisca: Set<string>;
+  readOnly: boolean;
+  tipoIsSaida: boolean;
+  onAplicarItem: (itemId: string, acumuladorId: string | null) => void;
+  onAbrirDrawer: (notaId: string) => void;
+}) {
+  const [aberto, setAberto] = useState(false);
+  const { info, itensFiltrados, classificados, total } = grupo;
+  const cancelada = info.cancelada;
+  const pctNota = total > 0 ? (classificados / total) * 100 : 0;
+  const TipoIcon = tipoIsSaida ? ArrowUpFromLine : ArrowDownToLine;
+  const tipoLabel = tipoIsSaida ? "Saída" : "Entrada";
+
+  return (
+    <Card className={`rounded-xl overflow-hidden ${cancelada ? "opacity-70" : ""}`}>
+      <div
+        className="flex items-center gap-4 p-4 hover:bg-muted/30 cursor-pointer transition-colors"
+        onClick={() => setAberto((v) => !v)}
+      >
+        <button
+          className="text-muted-foreground hover:text-foreground transition-colors"
+          aria-label={aberto ? "Recolher" : "Expandir"}
+        >
+          <motion.span
+            animate={{ rotate: aberto ? 90 : 0 }}
+            transition={{ duration: 0.18 }}
+            className="inline-block"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </motion.span>
+        </button>
+
+        <div className="flex items-center gap-3 min-w-0 flex-1 flex-wrap">
+          <Badge variant="outline" className="bg-brand-soft text-brand border-brand/20 gap-1 shrink-0">
+            <TipoIcon className="h-3 w-3" />
+            {tipoLabel}
+          </Badge>
+          <div className={`font-mono text-sm font-semibold tabular-nums ${cancelada ? "line-through" : ""}`}>
+            NF-e {info.numero_nfe ?? "—"}
+          </div>
+          <div className={`text-xs text-muted-foreground tabular-nums ${cancelada ? "line-through" : ""}`}>
+            {formatDateBR(info.emissao_nfe)}
+          </div>
+          <div className={`min-w-0 flex-1 truncate text-sm ${cancelada ? "line-through text-muted-foreground" : ""}`}>
+            <span className="font-medium">{info.prestador_razao ?? "—"}</span>{" "}
+            <span className="text-muted-foreground font-mono text-xs">
+              {formatCNPJ(info.prestador_cnpj)}
+            </span>
+          </div>
+          <div className={`text-sm tabular-nums shrink-0 ${cancelada ? "line-through text-muted-foreground" : ""}`}>
+            {formatBRL(info.valor_nfe)}
+          </div>
+
+          {cancelada ? (
+            <Badge variant="destructive" className="shrink-0">CANCELADA</Badge>
+          ) : (
+            <div className="flex items-center gap-2 shrink-0 min-w-[160px]">
+              <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-brand transition-all"
+                  style={{ width: `${pctNota}%` }}
+                />
+              </div>
+              <span className="text-xs text-muted-foreground tabular-nums whitespace-nowrap">
+                {classificados}/{total}
+              </span>
+            </div>
+          )}
+        </div>
+
+        <div onClick={(e) => e.stopPropagation()}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onAbrirDrawer(grupo.notaId)}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <Eye className="h-3.5 w-3.5" />
+            Ver detalhes
+          </Button>
+        </div>
+      </div>
+
+      <AnimatePresence initial={false}>
+        {aberto && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="border-t overflow-hidden"
+          >
+            <Table>
+              <TableHeader className="bg-muted/30">
+                <TableRow>
+                  <TableHead className="w-12">Item</TableHead>
+                  <TableHead>Descrição</TableHead>
+                  <TableHead className="w-[110px]">NCM</TableHead>
+                  <TableHead className="w-[80px]">CFOP</TableHead>
+                  <TableHead className="text-right w-[120px]">Valor</TableHead>
+                  <TableHead className="w-[280px]">Acumulador</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {itensFiltrados.map((i) => {
+                  const isPiscando = pisca.has(i.id);
+                  return (
+                    <motion.tr
+                      key={i.id}
+                      animate={
+                        isPiscando
+                          ? { backgroundColor: ["hsl(var(--success) / 0.15)", "hsl(var(--success) / 0)"] }
+                          : { backgroundColor: "hsl(var(--success) / 0)" }
+                      }
+                      transition={{ duration: 0.6, ease: "easeOut" }}
+                      className="border-b last:border-b-0 hover:bg-muted/30"
+                    >
+                      <TableCell className="tabular-nums">{i.numero_item}</TableCell>
+                      <TableCell className="max-w-[280px]">
+                        <DescricaoCell value={i.descricao_produto} codigo={i.codigo_produto} />
+                      </TableCell>
+                      <TableCell className="tabular-nums whitespace-nowrap">{i.ncm ?? "—"}</TableCell>
+                      <TableCell className="font-mono tabular-nums">{i.cfop ?? "—"}</TableCell>
+                      <TableCell className="text-right tabular-nums whitespace-nowrap">
+                        {formatBRL(i.valor)}
+                      </TableCell>
+                      <TableCell>
+                        <AcumuladorCombobox
+                          valueId={i.acumulador_id}
+                          acumuladores={acumuladores}
+                          disabled={readOnly || cancelada}
+                          onChange={(aid) => onAplicarItem(i.id, aid)}
+                        />
+                      </TableCell>
+                    </motion.tr>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </Card>
   );
 }
 
