@@ -1010,6 +1010,19 @@ export default function ClassificacaoNFe() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        <ExcluirImportacaoDialog
+          open={excluirOpen}
+          onOpenChange={setExcluirOpen}
+          competenciaId={competencia.id}
+          periodoLabel={formatPeriodo(competencia.periodo)}
+          tipoLabel={tipoLabel}
+          status={competencia.status}
+          totalNotas={notasMapState.size}
+          onExcluido={() => {
+            navigate(`/app/escritorio/clientes/${competencia.cliente_id}?tab=competencias`);
+          }}
+        />
       </div>
     </TooltipProvider>
   );
