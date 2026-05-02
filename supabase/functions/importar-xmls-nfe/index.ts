@@ -628,6 +628,9 @@ Deno.serve(async (req) => {
     const isEntrada = tipo === "nfe_entrada";
     const prestador_razao = isEntrada ? p.emit_nome : p.dest_nome;
     const prestador_cnpj = isEntrada ? p.emit_cnpj : p.dest_cnpj;
+    const prestador_uf = isEntrada ? p.emit_uf : p.dest_uf;
+    const prestador_municipio = isEntrada ? p.emit_municipio : p.dest_municipio;
+    const prestador_endereco = isEntrada ? p.emit_endereco : p.dest_endereco;
 
     const notaPayload = {
       competencia_id,
@@ -640,6 +643,9 @@ Deno.serve(async (req) => {
       data_competencia: p.emissao_nfe,
       prestador_razao,
       prestador_cnpj,
+      prestador_uf,
+      prestador_municipio,
+      prestador_endereco,
       valor_nfe: p.valor_total,
       desconto: 0,
       valor_contabil: p.valor_total,
