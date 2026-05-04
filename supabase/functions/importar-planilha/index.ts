@@ -216,8 +216,8 @@ Deno.serve(async (req) => {
   const { data: comp, error: compErr } = await admin
     .from("competencias")
     .upsert(
-      { cliente_id, periodo, arquivo_origem: storagePath },
-      { onConflict: "cliente_id,periodo" },
+      { cliente_id, periodo, tipo: "nfse_tomada", arquivo_origem: storagePath },
+      { onConflict: "cliente_id,periodo,tipo" },
     )
     .select("id")
     .single();
