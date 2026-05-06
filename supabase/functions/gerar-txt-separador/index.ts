@@ -221,19 +221,23 @@ Deno.serve(async (req) => {
   }
 
   // Notas
-  const { data: notas, error: notasErr } = await admin
+  let notasQuery = admin
     .from("notas_fiscais")
     .select(
-      "id, numero_nfe, chave_nfe, emissao_nfe, prestador_cnpj, prestador_razao, prestador_uf, prestador_municipio, prestador_endereco, raw_data, tipo_operacao_nfe, cancelada",
+      "id, numero_nfe, chave_nfe, emissao_nfe, prestador_cnpj, prestador_razao, prestador_uf, prestador_municipio, prestador_endereco, raw_data, tipo_operacao_nfe, tipo_documento, cancelada",
     )
     .eq("competencia_id", competencia_id)
-    .eq("cancelada", false)
-    .eq("tipo_documento", "nfe")
-    .order("emissao_nfe", { ascending: true });
+    .eq("cancelada", false);
+  if (isDocAvulso) {
+    notasQuery = notasQuery.in("tipo_documento", ["boleto", "fatura", "apolice"]);
+  } else {
+    notasQuery = notasQuery.eq("tipo_documento", "nfe");
+  }
+  const { data: notas, error: notasErr } = await notasQuery.order("emissao_nfe", { ascending: true });
   if (notasErr) return json({ ok: false, error: `Falha ao carregar notas: ${notasErr.message}` }, 500);
 
   if (!notas || notas.length === 0) {
-    return json({ ok: false, error: "Não há notas NFe para exportar nesta competência." }, 400);
+    return json({ ok: false, error: "Não há documentos para exportar nesta competência." }, 400);
   }
 
   const notaIds = notas.map((n) => n.id);
