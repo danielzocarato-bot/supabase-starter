@@ -641,32 +641,66 @@ Deno.serve(async (req) => {
     },
   };
 
-  // Tenta com data_lancamento como coluna; se a coluna não existir, faz fallback.
+  // Tenta com data_lancamento e prestador_municipio_ibge como colunas;
+  // se alguma não existir, faz fallback gravando em raw_data.
   let notaSaved: { id: string } | null = null;
   let notaErr: any = null;
   {
     const tentativa = await admin
       .from("notas_fiscais")
       .upsert(
-        { ...notaPayloadBase, data_lancamento: n.dataLancamento },
+        {
+          ...notaPayloadBase,
+          data_lancamento: n.dataLancamento,
+          prestador_municipio_ibge: n.municipioIbge ?? null,
+        },
         { onConflict: "competencia_id,id_externo" },
       )
       .select("id")
       .single();
     if (tentativa.error) {
       const msg = String(tentativa.error.message ?? "").toLowerCase();
-      if (msg.includes("data_lancamento") || msg.includes("column")) {
+      if (
+        msg.includes("data_lancamento") ||
+        msg.includes("prestador_municipio_ibge") ||
+        msg.includes("column")
+      ) {
         console.warn(
-          "[processar-documento-ia] coluna data_lancamento ausente; fallback para raw_data",
+          "[processar-documento-ia] coluna ausente (data_lancamento/prestador_municipio_ibge); fallback para raw_data",
           tentativa.error.message,
         );
-        const fallback = await admin
+        // Tenta só com prestador_municipio_ibge (caso só data_lancamento esteja faltando)
+        const t2 = await admin
           .from("notas_fiscais")
-          .upsert(notaPayloadBase, { onConflict: "competencia_id,id_externo" })
+          .upsert(
+            {
+              ...notaPayloadBase,
+              prestador_municipio_ibge: n.municipioIbge ?? null,
+            },
+            { onConflict: "competencia_id,id_externo" },
+          )
           .select("id")
           .single();
-        notaSaved = fallback.data;
-        notaErr = fallback.error;
+        if (t2.error) {
+          const msg2 = String(t2.error.message ?? "").toLowerCase();
+          if (
+            msg2.includes("prestador_municipio_ibge") || msg2.includes("column")
+          ) {
+            const fallback = await admin
+              .from("notas_fiscais")
+              .upsert(notaPayloadBase, {
+                onConflict: "competencia_id,id_externo",
+              })
+              .select("id")
+              .single();
+            notaSaved = fallback.data;
+            notaErr = fallback.error;
+          } else {
+            notaErr = t2.error;
+          }
+        } else {
+          notaSaved = t2.data;
+        }
       } else {
         notaErr = tentativa.error;
       }
