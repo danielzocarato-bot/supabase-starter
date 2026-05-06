@@ -173,7 +173,7 @@ async function extrairComIA(
   const aiData = await aiResponse.json();
   const raw = aiData?.choices?.[0]?.message?.content ?? "{}";
   try {
-    const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+    const parsed = typeof raw === "string" ? extractJSON(raw) : raw;
     return { ok: true, data: parsed };
   } catch (e) {
     console.error("[processar-documento-ia] JSON parse fail", raw);
@@ -183,6 +183,37 @@ async function extrairComIA(
       error: "Resposta da IA não é JSON válido.",
     };
   }
+}
+
+function extractJSON(raw: string): any {
+  let s = String(raw).trim();
+  // Remove markdown fences ```json ... ```
+  s = s.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "").trim();
+  // Try direct parse
+  try { return JSON.parse(s); } catch {}
+  // Locate outermost JSON object/array
+  const objStart = s.indexOf("{");
+  const arrStart = s.indexOf("[");
+  const isArr = arrStart !== -1 && (objStart === -1 || arrStart < objStart);
+  const start = isArr ? arrStart : objStart;
+  const end = isArr ? s.lastIndexOf("]") : s.lastIndexOf("}");
+  if (start !== -1 && end > start) {
+    const slice = s.slice(start, end + 1);
+    try { return JSON.parse(slice); } catch {}
+    // Attempt to repair truncated JSON: strip trailing partial property and close braces
+    let repaired = slice.replace(/,\s*"[^"]*"\s*:\s*"[^"]*$/g, "");
+    repaired = repaired.replace(/,\s*"[^"]*"\s*:\s*$/g, "");
+    repaired = repaired.replace(/,\s*$/g, "");
+    // Balance braces/brackets
+    const opensO = (repaired.match(/\{/g) || []).length;
+    const closesO = (repaired.match(/\}/g) || []).length;
+    const opensA = (repaired.match(/\[/g) || []).length;
+    const closesA = (repaired.match(/\]/g) || []).length;
+    repaired += "]".repeat(Math.max(0, opensA - closesA));
+    repaired += "}".repeat(Math.max(0, opensO - closesO));
+    return JSON.parse(repaired);
+  }
+  throw new Error("no JSON structure");
 }
 
 function normalizar(
