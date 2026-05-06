@@ -54,10 +54,12 @@ function formatDecimalBR(v: any, casas = 2): string {
   return n.toFixed(casas).replace(".", ",");
 }
 
-// Layout macro Excel: valores monetários como inteiro truncado (sem casas decimais, sem separador)
-function formatValorInteiro(v: any): string {
+// Layout macro Excel: valores monetários em formato BR (vírgula, 2 casas).
+// Zero é representado apenas como "0" (sem ",00") — exatamente como a macro do Excel gera.
+function formatValorBR(v: any): string {
   const n = parseNum(v);
-  return String(Math.trunc(n));
+  if (!Number.isFinite(n) || n === 0) return "0";
+  return n.toFixed(2).replace(".", ",");
 }
 
 function formatInt(v: any): string {
