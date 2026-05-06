@@ -174,7 +174,8 @@ Deno.serve(async (req) => {
   }
 
   // 3. Tipo
-  if (comp.tipo !== "nfe_entrada" && comp.tipo !== "nfe_saida") {
+  const tiposSuportados = ["nfe_entrada", "nfe_saida", "documento_avulso"];
+  if (!tiposSuportados.includes(comp.tipo as string)) {
     return json(
       {
         ok: false,
@@ -184,6 +185,7 @@ Deno.serve(async (req) => {
       400,
     );
   }
+  const isDocAvulso = comp.tipo === "documento_avulso";
 
   // 4. cliente_operacoes — layout configurado
   const { data: op, error: opErr } = await admin
