@@ -576,7 +576,7 @@ Deno.serve(async (req) => {
 
   const { data: op } = await admin
     .from("cliente_operacoes")
-    .select("tipo, ativo")
+    .select("tipo, ativo, cfop_servico_par")
     .eq("cliente_id", cliente_id)
     .eq("tipo", "documento_avulso")
     .eq("ativo", true)
