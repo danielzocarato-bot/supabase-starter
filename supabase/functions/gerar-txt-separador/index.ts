@@ -197,7 +197,7 @@ Deno.serve(async (req) => {
   // 4. cliente_operacoes — layout configurado
   const { data: op, error: opErr } = await admin
     .from("cliente_operacoes")
-    .select("layout_export, ativo")
+    .select("layout_export, ativo, cfop_servico_par")
     .eq("cliente_id", cliente.id)
     .eq("tipo", comp.tipo)
     .maybeSingle();
