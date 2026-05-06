@@ -180,18 +180,17 @@ Deno.serve(async (req) => {
   }
 
   // 3. Tipo
-  const tiposSuportados = ["nfe_entrada", "nfe_saida", "documento_avulso"];
+  const tiposSuportados = ["nfe_entrada", "nfe_saida", "documento_avulso", "nfse_tomada"];
   if (!tiposSuportados.includes(comp.tipo as string)) {
     return json(
-      {
-        ok: false,
-        error:
-          "Esta competência usa o leiaute Domínio 18 (NFSe). Use a função correspondente.",
-      },
+      { ok: false, error: "Tipo de competência não suportado por esta exportação." },
       400,
     );
   }
   const isDocAvulso = comp.tipo === "documento_avulso";
+  const isNfseTomada = comp.tipo === "nfse_tomada";
+  // Modos sem itens (1 linha por nota usando totais da nota)
+  const semItens = isDocAvulso || isNfseTomada;
 
   // 4. cliente_operacoes — layout configurado
   const { data: op, error: opErr } = await admin
