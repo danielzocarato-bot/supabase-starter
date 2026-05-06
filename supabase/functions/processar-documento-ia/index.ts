@@ -61,6 +61,103 @@ function normalizeUF(v: unknown): string | null {
   return /^[A-Z]{2}$/.test(s) ? s : null;
 }
 
+function isValidCNPJ(cnpj: string): boolean {
+  if (!/^\d{14}$/.test(cnpj)) return false;
+  if (/^(\d)\1{13}$/.test(cnpj)) return false;
+  const calc = (base: string) => {
+    let len = base.length;
+    let pos = len - 7;
+    let soma = 0;
+    for (let i = len; i >= 1; i--) {
+      soma += Number(base.charAt(len - i)) * pos--;
+      if (pos < 2) pos = 9;
+    }
+    const r = soma % 11;
+    return r < 2 ? 0 : 11 - r;
+  };
+  const d1 = calc(cnpj.substring(0, 12));
+  if (d1 !== Number(cnpj.charAt(12))) return false;
+  const d2 = calc(cnpj.substring(0, 13));
+  return d2 === Number(cnpj.charAt(13));
+}
+
+async function enriquecerComBrasilAPI(extraido: any): Promise<void> {
+  const cnpjRaw = extraido?.cnpj_beneficiario ?? extraido?.cnpj_emitente ??
+    extraido?.cnpj_seguradora ?? null;
+  const cnpj = digitsOnly(cnpjRaw);
+  if (!cnpj || cnpj.length !== 14 || !isValidCNPJ(cnpj)) {
+    console.info(
+      "[brasilapi] CNPJ inválido (não tem 14 dígitos ou DV falhou) — mantendo dados da IA",
+      { cnpj_raw: cnpjRaw },
+    );
+    return;
+  }
+  console.info(`[brasilapi] consultando CNPJ ${cnpj}`);
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 5000);
+  let resp: Response;
+  try {
+    resp = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`, {
+      signal: ctrl.signal,
+      headers: { Accept: "application/json" },
+    });
+  } catch (e: any) {
+    clearTimeout(t);
+    console.warn(
+      `[brasilapi] erro de rede/timeout (${e?.name ?? "Error"}) — mantendo dados da IA`,
+    );
+    return;
+  }
+  clearTimeout(t);
+  if (resp.status !== 200) {
+    console.warn(`[brasilapi] ${resp.status} — mantendo dados da IA`);
+    try { await resp.body?.cancel(); } catch {}
+    return;
+  }
+  let dados: any;
+  try {
+    dados = await resp.json();
+  } catch {
+    console.warn("[brasilapi] resposta inválida — mantendo dados da IA");
+    return;
+  }
+
+  // Determina sufixo de campo (beneficiario / emitente / seguradora)
+  const suf = extraido.cnpj_beneficiario
+    ? "beneficiario"
+    : extraido.cnpj_emitente
+    ? "emitente"
+    : "seguradora";
+
+  if (dados.razao_social) {
+    extraido[`razao_${suf}`] = dados.razao_social;
+  }
+  const ufApi = normalizeUF(dados.uf);
+  if (ufApi) {
+    extraido[`uf_${suf}`] = ufApi;
+  }
+  if (dados.municipio) {
+    extraido[`municipio_${suf}`] = dados.municipio;
+  }
+  if (dados.logradouro) {
+    let end = String(dados.logradouro);
+    if (dados.numero) end += `, ${dados.numero}`;
+    if (dados.complemento) end += ` - ${dados.complemento}`;
+    if (dados.bairro) end += ` - ${dados.bairro}`;
+    extraido[`endereco_${suf}`] = end;
+  }
+  if (dados.codigo_municipio_ibge) {
+    extraido.municipio_ibge = String(dados.codigo_municipio_ibge);
+  }
+  if (dados.cep) {
+    const cepDig = digitsOnly(dados.cep);
+    if (cepDig) extraido.cep = cepDig;
+  }
+  console.info(
+    `[brasilapi] enriquecido: razao=${extraido[`razao_${suf}`]}, uf=${extraido[`uf_${suf}`]}, municipio=${extraido[`municipio_${suf}`]}, ibge=${extraido.municipio_ibge ?? null}`,
+  );
+}
+
 function primeiroDiaCompetencia(periodo: string): string {
   return `${periodo}-01`;
 }
