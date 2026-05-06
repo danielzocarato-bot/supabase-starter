@@ -1,6 +1,7 @@
 // Lógica compartilhada de import/upsert de NF-e a partir de strings XML.
 // Usado por importar-xmls-nfe (após descompactar) e buscar-xmls-sieg (após baixar do SIEG).
 import { digitsOnly, parseXml, type ParsedNFe } from "./nfe-parser.ts";
+import { enrichPrestador } from "./enrich-prestador.ts";
 
 export type TipoNFeOp = "nfe_entrada" | "nfe_saida";
 
