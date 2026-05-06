@@ -1533,10 +1533,28 @@ function AbaOperacoes({ clienteId }: { clienteId: string }) {
                       onChange={(ev) => handleLayout(t.key, ev.target.value)}
                       className="flex h-10 w-full max-w-md rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                     >
-                      {t.layouts.map(l => (
+                    {t.layouts.map(l => (
                         <option key={l.value} value={l.value}>{l.label}</option>
                       ))}
                     </select>
+                    {t.key === "nfse_tomada" && (
+                      <div className="space-y-2 pt-3">
+                        <Label className="text-xs text-muted-foreground">Par de CFOP (serviço tomado)</Label>
+                        <select
+                          value={e.cfopPar}
+                          onChange={(ev) =>
+                            setEstado(prev => ({ ...prev, [t.key]: { ...prev[t.key], cfopPar: ev.target.value } }))
+                          }
+                          className="flex h-10 w-full max-w-md rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                        >
+                          <option value="1933_2933">1933 (mesma UF) / 2933 (outra UF)</option>
+                          <option value="1949_2949">1949 (mesma UF) / 2949 (outra UF)</option>
+                        </select>
+                        <p className="text-xs text-muted-foreground">
+                          Usado na exportação do TXT quando o documento não traz CFOP. O sistema escolhe entre os dois conforme a UF do prestador vs. a UF do cliente.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
