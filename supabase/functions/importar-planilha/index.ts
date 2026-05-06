@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import * as XLSX from "https://esm.sh/xlsx@0.18.5";
+import { enrichPrestador } from "../_shared/enrich-prestador.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -312,38 +313,36 @@ Deno.serve(async (req) => {
     else adicionadas++;
   }
 
-  // Enriquecimento via BrasilAPI: CNPJs distintos sem prestador_endereco
+  // Enriquecimento em cascata (BrasilAPI -> ReceitaWS -> IBGE-por-nome)
   const { data: paraEnriquecer } = await admin
     .from("notas_fiscais")
-    .select("prestador_cnpj")
+    .select("prestador_cnpj, prestador_municipio, prestador_uf")
     .eq("competencia_id", competencia_id)
-    .is("prestador_endereco", null)
+    .or("prestador_endereco.is.null,prestador_municipio_ibge.is.null")
     .not("prestador_cnpj", "is", null);
 
-  const cnpjsDistintos = Array.from(
-    new Set(
-      (paraEnriquecer ?? [])
-        .map((n) => digitsOnly(n.prestador_cnpj ?? ""))
-        .filter((c) => c.length === 14),
-    ),
-  );
+  const grupos = new Map<string, { municipio: string | null; uf: string | null }>();
+  for (const n of paraEnriquecer ?? []) {
+    const c = digitsOnly(n.prestador_cnpj ?? "");
+    if (c.length !== 14) continue;
+    if (!grupos.has(c)) grupos.set(c, { municipio: n.prestador_municipio, uf: n.prestador_uf });
+  }
+  const cnpjsDistintos = Array.from(grupos.keys());
 
   let enriquecidos = 0;
   let falhas_enriquecimento = 0;
 
   if (cnpjsDistintos.length > 0) {
-    const settled = await runWithConcurrency(cnpjsDistintos, 5, async (cnpj) => {
-      const info = await fetchEmpresaBrasilAPI(cnpj);
-      if (!info || (!info.endereco && !info.ibge)) {
-        throw new Error("sem dados");
-      }
-      // prestador_cnpj agora é sempre dígitos
+    const settled = await runWithConcurrency(cnpjsDistintos, 4, async (cnpj) => {
+      const g = grupos.get(cnpj)!;
+      const r = await enrichPrestador(cnpj, g.municipio, g.uf);
+      const patch: Record<string, any> = {};
+      if (r.endereco) patch.prestador_endereco = r.endereco;
+      if (r.ibge) patch.prestador_municipio_ibge = r.ibge;
+      if (Object.keys(patch).length === 0) throw new Error("sem dados");
       const { error } = await admin
         .from("notas_fiscais")
-        .update({
-          prestador_endereco: info.endereco,
-          prestador_municipio_ibge: info.ibge,
-        })
+        .update(patch)
         .eq("competencia_id", competencia_id)
         .eq("prestador_cnpj", cnpj);
       if (error) throw error;
