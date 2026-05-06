@@ -282,7 +282,7 @@ export default function UploadDocumentos() {
             data_vencimento: pick(previo?.data_vencimento, ai.data_vencimento, d.edited.has("data_vencimento")),
             valor_nfe: pick(previo?.valor_nfe, ai.valor != null ? String(ai.valor) : null, d.edited.has("valor_nfe")),
             descricao: pick(previo?.descricao, ext.descricao, d.edited.has("descricao")),
-            cfop: pick(previo?.cfop, ext.cfop ?? "1933", d.edited.has("cfop")),
+            cfop: pick(previo?.cfop, ai.cfop ?? ext.cfop ?? "1949", d.edited.has("cfop")),
           };
           return {
             ...d,
@@ -356,7 +356,7 @@ export default function UploadDocumentos() {
       .from("notas_fiscais_itens")
       .update({
         descricao_produto: c.descricao || null,
-        cfop: c.cfop || "1933",
+        cfop: c.cfop || "1949",
         valor: isFinite(valor) ? valor : 0,
       })
       .eq("nota_id", doc.notaId)
