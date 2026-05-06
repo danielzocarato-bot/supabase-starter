@@ -302,7 +302,7 @@ Deno.serve(async (req) => {
     itensPorNota.set(it.nota_id, arr);
   }
 
-  // Geração — 1 linha por item, 33 campos, separador ;
+  // Geração — 1 linha por NOTA (consolidando itens), 33 campos, separador ;
   console.info(
     `[gerar-txt-separador] Export modo ${isDocAvulso ? "documento_avulso" : "nfe"} — competencia=${competencia_id} notas=${notas.length}`,
   );
@@ -323,94 +323,106 @@ Deno.serve(async (req) => {
     const dataEmi = formatDateBR(n.emissao_nfe);
     const situacao = n.cancelada ? "2" : "0";
 
-    for (const it of itens) {
-      const codAcum = String(it.acumuladores?.codigo ?? "0").trim();
-      const cfop = formatInt(it.cfop);
+    // Consolida itens: CFOP e acumulador do primeiro item; valores somados
+    const primeiro = itens[0];
+    const codAcum = String(primeiro.acumuladores?.codigo ?? "0").trim();
+    const cfop = formatInt(primeiro.cfop);
 
+    let sVProd = 0, sVDesc = 0;
+    let sBC_ICMS = 0, sV_ICMS = 0;
+    let sBC_IPI = 0, sV_IPI = 0;
+    let pICMS_max = 0, pIPI_max = 0;
+
+    for (const it of itens) {
       const prod = it.raw_data?.produto ?? {};
       const icms = it.raw_data?.icms ?? {};
       const ipi = it.raw_data?.ipi ?? {};
-
-      let valorProdRaw = prod.vProd ?? it.valor;
-      let valorDescRaw = prod.vDesc ?? 0;
-      let valorProd = formatValorInteiro(valorProdRaw);
-      let valorDesc = formatValorInteiro(valorDescRaw);
-      let valorContabil = formatValorInteiro(parseNum(valorProdRaw) - parseNum(valorDescRaw));
-
-      // Campos fiscais (default — fluxo NFe) — formato inteiro truncado conforme macro
-      let vBC_ICMS = formatValorInteiro(icms.vBC ?? 0);
-      let pICMS = formatValorInteiro(icms.pICMS ?? 0);
-      let vICMS = formatValorInteiro(icms.vICMS ?? 0);
-      let vOutrasICMS = "0";
-      let vIsentaICMS = "0";
-      let vBC_IPI = formatValorInteiro(ipi.vBC ?? 0);
-      let pIPI = formatValorInteiro(ipi.pIPI ?? 0);
-      let vIPI = formatValorInteiro(ipi.vIPI ?? 0);
-      let vOutrasIPI = "0";
-      let vIsentaIPI = "0";
-
-      // Override para documento_avulso: valor total do documento em outras_icms
-      if (isDocAvulso) {
-        const totalDoc = parseNum((n as any).valor_nfe ?? (n as any).valor_contabil ?? prod.vProd ?? it.valor);
-        const totalFmt = formatValorInteiro(totalDoc);
-        valorProd = totalFmt;
-        valorContabil = totalFmt;
-        vOutrasICMS = totalFmt;
-
-        valorDesc = "0";
-        vBC_ICMS = "0";
-        pICMS = "0";
-        vICMS = "0";
-        vIsentaICMS = "0";
-        vBC_IPI = "0";
-        pIPI = "0";
-        vIPI = "0";
-        vOutrasIPI = "0";
-        vIsentaIPI = "0";
-      }
-
-      somaValorContabil += parseNum(valorContabil);
-
-      // Layout macro Excel: campos de texto SEM aspas, separador ;
-      // Campos 25-33 (item, qtde, valor unit, PIS/COFINS) ficam vazios conforme exemplo da macro
-      const campos = [
-        cnpjPrestador,                                     // 1  C CNPJ
-        razaoSocial,                                       // 2  C Razão social
-        uf,                                                // 3  C UF
-        municipio,                                         // 4  C Município
-        endereco,                                          // 5  C Endereço
-        numDoc,                                            // 6  G Nº doc
-        serie,                                             // 7  C Série
-        dataEmi,                                           // 8  D Data emissão
-        situacao,                                          // 9  N Situação
-        formatInt(codAcum),                                // 10 N Acumulador
-        cfop,                                              // 11 N CFOP
-        valorProd,                                         // 12 R Valor produtos
-        valorDesc,                                         // 13 R Desconto
-        valorContabil,                                     // 14 R Valor contábil
-        vBC_ICMS,                                          // 15 R Base ICMS
-        pICMS,                                             // 16 R Aliq ICMS
-        vICMS,                                             // 17 R Valor ICMS
-        vOutrasICMS,                                       // 18 R Outras ICMS
-        vIsentaICMS,                                       // 19 R Isentas ICMS
-        vBC_IPI,                                           // 20 R Base IPI
-        pIPI,                                              // 21 R Aliq IPI
-        vIPI,                                              // 22 R Valor IPI
-        vOutrasIPI,                                        // 23 R Outras IPI
-        vIsentaIPI,                                        // 24 R Isentas IPI
-        "",                                                // 25 C Cód. item
-        "",                                                // 26 R Qtde
-        "",                                                // 27 R Valor unit.
-        "",                                                // 28 N CST PIS/COFINS
-        "",                                                // 29 R Base PIS/COFINS
-        "",                                                // 30 R Aliq PIS
-        "",                                                // 31 R Valor PIS
-        "",                                                // 32 R Aliq COFINS
-        "",                                                // 33 R Valor COFINS
-      ];
-
-      linhas.push(campos.join(";"));
+      sVProd += parseNum(prod.vProd ?? it.valor);
+      sVDesc += parseNum(prod.vDesc ?? 0);
+      sBC_ICMS += parseNum(icms.vBC ?? 0);
+      sV_ICMS += parseNum(icms.vICMS ?? 0);
+      sBC_IPI += parseNum(ipi.vBC ?? 0);
+      sV_IPI += parseNum(ipi.vIPI ?? 0);
+      pICMS_max = Math.max(pICMS_max, parseNum(icms.pICMS ?? 0));
+      pIPI_max = Math.max(pIPI_max, parseNum(ipi.pIPI ?? 0));
     }
+
+    let valorProd = formatValorInteiro(sVProd);
+    let valorDesc = formatValorInteiro(sVDesc);
+    let valorContabil = formatValorInteiro(sVProd - sVDesc);
+
+    let vBC_ICMS = formatValorInteiro(sBC_ICMS);
+    let pICMS = formatValorInteiro(pICMS_max);
+    let vICMS = formatValorInteiro(sV_ICMS);
+    let vOutrasICMS = "0";
+    let vIsentaICMS = "0";
+    let vBC_IPI = formatValorInteiro(sBC_IPI);
+    let pIPI = formatValorInteiro(pIPI_max);
+    let vIPI = formatValorInteiro(sV_IPI);
+    let vOutrasIPI = "0";
+    let vIsentaIPI = "0";
+
+    // Override para documento_avulso: valor total do documento em outras_icms
+    if (isDocAvulso) {
+      const totalDoc = parseNum((n as any).valor_nfe ?? (n as any).valor_contabil ?? sVProd);
+      const totalFmt = formatValorInteiro(totalDoc);
+      valorProd = totalFmt;
+      valorContabil = totalFmt;
+      vOutrasICMS = totalFmt;
+
+      valorDesc = "0";
+      vBC_ICMS = "0";
+      pICMS = "0";
+      vICMS = "0";
+      vIsentaICMS = "0";
+      vBC_IPI = "0";
+      pIPI = "0";
+      vIPI = "0";
+      vOutrasIPI = "0";
+      vIsentaIPI = "0";
+    }
+
+    somaValorContabil += parseNum(valorContabil);
+
+    // Layout macro Excel: campos de texto SEM aspas, separador ;
+    // Campos 25-33 (item, qtde, valor unit, PIS/COFINS) ficam vazios conforme exemplo da macro
+    const campos = [
+      cnpjPrestador,                                     // 1  C CNPJ
+      razaoSocial,                                       // 2  C Razão social
+      uf,                                                // 3  C UF
+      municipio,                                         // 4  C Município
+      endereco,                                          // 5  C Endereço
+      numDoc,                                            // 6  G Nº doc
+      serie,                                             // 7  C Série
+      dataEmi,                                           // 8  D Data emissão
+      situacao,                                          // 9  N Situação
+      formatInt(codAcum),                                // 10 N Acumulador
+      cfop,                                              // 11 N CFOP
+      valorProd,                                         // 12 R Valor produtos
+      valorDesc,                                         // 13 R Desconto
+      valorContabil,                                     // 14 R Valor contábil
+      vBC_ICMS,                                          // 15 R Base ICMS
+      pICMS,                                             // 16 R Aliq ICMS
+      vICMS,                                             // 17 R Valor ICMS
+      vOutrasICMS,                                       // 18 R Outras ICMS
+      vIsentaICMS,                                       // 19 R Isentas ICMS
+      vBC_IPI,                                           // 20 R Base IPI
+      pIPI,                                              // 21 R Aliq IPI
+      vIPI,                                              // 22 R Valor IPI
+      vOutrasIPI,                                        // 23 R Outras IPI
+      vIsentaIPI,                                        // 24 R Isentas IPI
+      "",                                                // 25 C Cód. item
+      "",                                                // 26 R Qtde
+      "",                                                // 27 R Valor unit.
+      "",                                                // 28 N CST PIS/COFINS
+      "",                                                // 29 R Base PIS/COFINS
+      "",                                                // 30 R Aliq PIS
+      "",                                                // 31 R Valor PIS
+      "",                                                // 32 R Aliq COFINS
+      "",                                                // 33 R Valor COFINS
+    ];
+
+    linhas.push(campos.join(";"));
   }
 
   console.info(
