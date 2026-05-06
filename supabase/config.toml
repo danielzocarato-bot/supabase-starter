@@ -18,3 +18,6 @@ project_id = "cicyhmnvoqggdpvpyobi"
 
   [functions.handle-email-suppression]
     verify_jwt = false
+
+  [functions.processar-documento-ia]
+    verify_jwt = false
