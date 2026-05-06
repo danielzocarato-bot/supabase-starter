@@ -253,7 +253,7 @@ Deno.serve(async (req) => {
 
   // Itens (apenas para modos com itens)
   const itensAll: any[] = [];
-  if (!semItens) {
+  if (!isNfseTomada) {
     const CHUNK = 100;
     for (let i = 0; i < notaIds.length; i += CHUNK) {
       const slice = notaIds.slice(i, i + CHUNK);
@@ -277,9 +277,26 @@ Deno.serve(async (req) => {
 
   // Pendências de classificação
   const pendentes: string[] = [];
-  if (semItens) {
+  if (isNfseTomada) {
     for (const n of notas) {
       if (!n.acumulador_id) {
+        pendentes.push(
+          `NF ${n.numero_nfe ?? "?"} - ${n.prestador_razao ?? "Sem prestador"}`,
+        );
+      }
+    }
+  } else if (isDocAvulso) {
+    // Para documento_avulso o acumulador pode estar na nota ou no primeiro item
+    const itensByNota = new Map<string, any[]>();
+    for (const it of itensAll) {
+      const arr = itensByNota.get(it.nota_id) ?? [];
+      arr.push(it);
+      itensByNota.set(it.nota_id, arr);
+    }
+    for (const n of notas) {
+      const its = itensByNota.get(n.id) ?? [];
+      const temAcum = !!n.acumulador_id || its.some((it) => !!it.acumulador_id);
+      if (!temAcum) {
         pendentes.push(
           `NF ${n.numero_nfe ?? "?"} - ${n.prestador_razao ?? "Sem prestador"}`,
         );
@@ -344,7 +361,9 @@ Deno.serve(async (req) => {
     let codAcum = "0";
     let cfop = "0";
     if (semItens) {
-      codAcum = String((n as any).acumuladores?.codigo ?? "0").trim();
+      const codNota = String((n as any).acumuladores?.codigo ?? "").trim();
+      const codItem = itens.length > 0 ? String(itens[0].acumuladores?.codigo ?? "").trim() : "";
+      codAcum = codNota || codItem || "0";
 
       // Par de CFOP configurado no cliente (default 1933/2933)
       const par = ((op as any)?.cfop_servico_par ?? "1933_2933").toString();
