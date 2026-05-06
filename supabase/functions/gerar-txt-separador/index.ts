@@ -361,7 +361,9 @@ Deno.serve(async (req) => {
     let codAcum = "0";
     let cfop = "0";
     if (semItens) {
-      codAcum = String((n as any).acumuladores?.codigo ?? "0").trim();
+      const codNota = String((n as any).acumuladores?.codigo ?? "").trim();
+      const codItem = itens.length > 0 ? String(itens[0].acumuladores?.codigo ?? "").trim() : "";
+      codAcum = codNota || codItem || "0";
 
       // Par de CFOP configurado no cliente (default 1933/2933)
       const par = ((op as any)?.cfop_servico_par ?? "1933_2933").toString();
