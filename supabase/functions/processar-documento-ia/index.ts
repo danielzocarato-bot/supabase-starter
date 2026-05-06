@@ -371,11 +371,6 @@ function normalizar(
   const [cfopDentro, cfopFora] = cfopPar === "1933_2933"
     ? ["1933", "2933"]
     : ["1949", "2949"];
-  // (mantém compat: qualquer valor diferente de 1933_2933 cai no novo padrão)
-  void 0;
-  const _ignored = cfopPar === "1949_2949"
-    ? ["1949", "2949"]
-    : ["1933", "2933"];
   let cfop: string;
   if (!uf) {
     console.warn(
@@ -617,7 +612,7 @@ Deno.serve(async (req) => {
   const extraido = ai.data;
   await enriquecerComBrasilAPI(extraido);
   
-  const cfopPar = ((op as any)?.cfop_servico_par ?? "1933_2933") as string;
+  const cfopPar = ((op as any)?.cfop_servico_par ?? "1949_2949") as string;
   const n = normalizar(categoria, extraido, ufCliente, periodo, cfopPar);
 
   // Competência
