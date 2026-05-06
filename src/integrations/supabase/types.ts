@@ -381,6 +381,7 @@ export type Database = {
         Row: {
           acumulador_id: string | null
           cancelada: boolean
+          categoria_doc: string | null
           chave_nfe: string | null
           classificado_em: string | null
           classificado_por: string | null
@@ -388,6 +389,7 @@ export type Database = {
           competencia_id: string
           created_at: string
           data_competencia: string | null
+          data_vencimento: string | null
           desconto: number
           emissao_nfe: string | null
           id: string
@@ -411,6 +413,7 @@ export type Database = {
         Insert: {
           acumulador_id?: string | null
           cancelada?: boolean
+          categoria_doc?: string | null
           chave_nfe?: string | null
           classificado_em?: string | null
           classificado_por?: string | null
@@ -418,6 +421,7 @@ export type Database = {
           competencia_id: string
           created_at?: string
           data_competencia?: string | null
+          data_vencimento?: string | null
           desconto?: number
           emissao_nfe?: string | null
           id?: string
@@ -441,6 +445,7 @@ export type Database = {
         Update: {
           acumulador_id?: string | null
           cancelada?: boolean
+          categoria_doc?: string | null
           chave_nfe?: string | null
           classificado_em?: string | null
           classificado_por?: string | null
@@ -448,6 +453,7 @@ export type Database = {
           competencia_id?: string
           created_at?: string
           data_competencia?: string | null
+          data_vencimento?: string | null
           desconto?: number
           emissao_nfe?: string | null
           id?: string
@@ -724,7 +730,11 @@ export type Database = {
     }
     Enums: {
       competencia_status: "aberta" | "concluida" | "exportada"
-      tipo_operacao: "nfse_tomada" | "nfe_entrada" | "nfe_saida"
+      tipo_operacao:
+        | "nfse_tomada"
+        | "nfe_entrada"
+        | "nfe_saida"
+        | "documento_avulso"
       user_role: "escritorio" | "cliente"
     }
     CompositeTypes: {
@@ -854,7 +864,12 @@ export const Constants = {
   public: {
     Enums: {
       competencia_status: ["aberta", "concluida", "exportada"],
-      tipo_operacao: ["nfse_tomada", "nfe_entrada", "nfe_saida"],
+      tipo_operacao: [
+        "nfse_tomada",
+        "nfe_entrada",
+        "nfe_saida",
+        "documento_avulso",
+      ],
       user_role: ["escritorio", "cliente"],
     },
   },
