@@ -1,0 +1,1 @@
+UPDATE public.cliente_operacoes SET layout_export = 'dominio_layout_209' WHERE tipo = 'nfse_tomada';
