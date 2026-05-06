@@ -277,9 +277,26 @@ Deno.serve(async (req) => {
 
   // Pendências de classificação
   const pendentes: string[] = [];
-  if (semItens) {
+  if (isNfseTomada) {
     for (const n of notas) {
       if (!n.acumulador_id) {
+        pendentes.push(
+          `NF ${n.numero_nfe ?? "?"} - ${n.prestador_razao ?? "Sem prestador"}`,
+        );
+      }
+    }
+  } else if (isDocAvulso) {
+    // Para documento_avulso o acumulador pode estar na nota ou no primeiro item
+    const itensByNota = new Map<string, any[]>();
+    for (const it of itensAll) {
+      const arr = itensByNota.get(it.nota_id) ?? [];
+      arr.push(it);
+      itensByNota.set(it.nota_id, arr);
+    }
+    for (const n of notas) {
+      const its = itensByNota.get(n.id) ?? [];
+      const temAcum = !!n.acumulador_id || its.some((it) => !!it.acumulador_id);
+      if (!temAcum) {
         pendentes.push(
           `NF ${n.numero_nfe ?? "?"} - ${n.prestador_razao ?? "Sem prestador"}`,
         );
