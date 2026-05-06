@@ -369,18 +369,18 @@ Deno.serve(async (req) => {
       pIPI_max = Math.max(pIPI_max, parseNum(ipi.pIPI ?? 0));
     }
 
-    let valorProd = formatValorInteiro(sVProd);
-    let valorDesc = formatValorInteiro(sVDesc);
-    let valorContabil = formatValorInteiro(sVProd - sVDesc);
+    let valorProd = formatValorBR(sVProd);
+    let valorDesc = formatValorBR(sVDesc);
+    let valorContabil = formatValorBR(sVProd - sVDesc);
 
-    let vBC_ICMS = formatValorInteiro(sBC_ICMS);
-    let pICMS = formatValorInteiro(pICMS_max);
-    let vICMS = formatValorInteiro(sV_ICMS);
+    let vBC_ICMS = formatValorBR(sBC_ICMS);
+    let pICMS = formatValorBR(pICMS_max);
+    let vICMS = formatValorBR(sV_ICMS);
     let vOutrasICMS = "0";
     let vIsentaICMS = "0";
-    let vBC_IPI = formatValorInteiro(sBC_IPI);
-    let pIPI = formatValorInteiro(pIPI_max);
-    let vIPI = formatValorInteiro(sV_IPI);
+    let vBC_IPI = formatValorBR(sBC_IPI);
+    let pIPI = formatValorBR(pIPI_max);
+    let vIPI = formatValorBR(sV_IPI);
     let vOutrasIPI = "0";
     let vIsentaIPI = "0";
 
@@ -390,9 +390,9 @@ Deno.serve(async (req) => {
       const totalBruto = parseNum((n as any).valor_nfe);
       const desc = parseNum((n as any).desconto ?? 0);
       const totalLiq = parseNum((n as any).valor_contabil ?? (totalBruto - desc));
-      const totalFmt = formatValorInteiro(totalLiq);
-      valorProd = formatValorInteiro(totalBruto || totalLiq);
-      valorDesc = formatValorInteiro(desc);
+      const totalFmt = formatValorBR(totalLiq);
+      valorProd = formatValorBR(totalBruto || totalLiq);
+      valorDesc = formatValorBR(desc);
       valorContabil = totalFmt;
       vOutrasICMS = totalFmt;
 
