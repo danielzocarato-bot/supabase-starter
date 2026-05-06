@@ -1472,7 +1472,7 @@ function AbaOperacoes({ clienteId }: { clienteId: string }) {
         } else if (
           e.ativo && eraAtivo && (
             o!.layout_export !== e.layout ||
-            (t.key === "nfse_tomada" && (o!.cfop_servico_par ?? "1933_2933") !== e.cfopPar)
+            ((t.key === "nfse_tomada" || t.key === "documento_avulso") && (o!.cfop_servico_par ?? "1933_2933") !== e.cfopPar)
           )
         ) {
           const { error } = await (supabase as any)
