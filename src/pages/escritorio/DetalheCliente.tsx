@@ -1366,10 +1366,10 @@ function AbaOperacoes({ clienteId }: { clienteId: string }) {
     documento_avulso: null,
   });
   const [estado, setEstado] = useState<Record<TipoOperacao, { ativo: boolean; layout: string; cfopPar: string }>>({
-    nfse_tomada: { ativo: false, layout: "dominio_layout_209", cfopPar: "1933_2933" },
-    nfe_entrada: { ativo: false, layout: "dominio_separador", cfopPar: "1933_2933" },
-    nfe_saida: { ativo: false, layout: "dominio_separador", cfopPar: "1933_2933" },
-    documento_avulso: { ativo: false, layout: "dominio_layout_209", cfopPar: "1933_2933" },
+    nfse_tomada: { ativo: false, layout: "dominio_layout_209", cfopPar: "1949_2949" },
+    nfe_entrada: { ativo: false, layout: "dominio_separador", cfopPar: "1949_2949" },
+    nfe_saida: { ativo: false, layout: "dominio_separador", cfopPar: "1949_2949" },
+    documento_avulso: { ativo: false, layout: "dominio_layout_209", cfopPar: "1949_2949" },
   });
   const [bloqueio, setBloqueio] = useState<{ tipo: TipoOperacao; titulo: string } | null>(null);
 
@@ -1391,14 +1391,14 @@ function AbaOperacoes({ clienteId }: { clienteId: string }) {
       documento_avulso: null,
     };
     const est: Record<TipoOperacao, { ativo: boolean; layout: string; cfopPar: string }> = {
-      nfse_tomada: { ativo: false, layout: "dominio_layout_209", cfopPar: "1933_2933" },
-      nfe_entrada: { ativo: false, layout: "dominio_separador", cfopPar: "1933_2933" },
-      nfe_saida: { ativo: false, layout: "dominio_separador", cfopPar: "1933_2933" },
-      documento_avulso: { ativo: false, layout: "dominio_layout_209", cfopPar: "1933_2933" },
+      nfse_tomada: { ativo: false, layout: "dominio_layout_209", cfopPar: "1949_2949" },
+      nfe_entrada: { ativo: false, layout: "dominio_separador", cfopPar: "1949_2949" },
+      nfe_saida: { ativo: false, layout: "dominio_separador", cfopPar: "1949_2949" },
+      documento_avulso: { ativo: false, layout: "dominio_layout_209", cfopPar: "1949_2949" },
     };
     (data ?? []).forEach((r: OperacaoRow) => {
       orig[r.tipo] = r;
-      est[r.tipo] = { ativo: true, layout: r.layout_export, cfopPar: r.cfop_servico_par ?? "1933_2933" };
+      est[r.tipo] = { ativo: true, layout: r.layout_export, cfopPar: r.cfop_servico_par ?? "1949_2949" };
     });
     setOriginal(orig);
     setEstado(est);
@@ -1414,7 +1414,7 @@ function AbaOperacoes({ clienteId }: { clienteId: string }) {
       const eraAtivo = !!o;
       if (eraAtivo !== e.ativo) return true;
       if (eraAtivo && o!.layout_export !== e.layout) return true;
-      if (eraAtivo && (t.key === "nfse_tomada" || t.key === "documento_avulso") && (o!.cfop_servico_par ?? "1933_2933") !== e.cfopPar) return true;
+      if (eraAtivo && (t.key === "nfse_tomada" || t.key === "documento_avulso") && (o!.cfop_servico_par ?? "1949_2949") !== e.cfopPar) return true;
       return false;
     });
   }, [original, estado]);
@@ -1472,7 +1472,7 @@ function AbaOperacoes({ clienteId }: { clienteId: string }) {
         } else if (
           e.ativo && eraAtivo && (
             o!.layout_export !== e.layout ||
-            ((t.key === "nfse_tomada" || t.key === "documento_avulso") && (o!.cfop_servico_par ?? "1933_2933") !== e.cfopPar)
+            ((t.key === "nfse_tomada" || t.key === "documento_avulso") && (o!.cfop_servico_par ?? "1949_2949") !== e.cfopPar)
           )
         ) {
           const { error } = await (supabase as any)
@@ -1547,8 +1547,8 @@ function AbaOperacoes({ clienteId }: { clienteId: string }) {
                           }
                           className="flex h-10 w-full max-w-md rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                         >
-                          <option value="1933_2933">1933 (mesma UF) / 2933 (outra UF)</option>
                           <option value="1949_2949">1949 (mesma UF) / 2949 (outra UF)</option>
+                          <option value="1933_2933">1933 / 2933 (legado)</option>
                         </select>
                         <p className="text-xs text-muted-foreground">
                           Usado na exportação do TXT quando o documento não traz CFOP. O sistema escolhe entre os dois conforme a UF do prestador vs. a UF do cliente.
