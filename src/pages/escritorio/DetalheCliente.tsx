@@ -1453,7 +1453,7 @@ function AbaOperacoes({ clienteId }: { clienteId: string }) {
         const eraAtivo = !!o;
         const payloadInsert: any = { cliente_id: clienteId, tipo: t.key, layout_export: e.layout };
         const payloadUpdate: any = { layout_export: e.layout };
-        if (t.key === "nfse_tomada") {
+        if (t.key === "nfse_tomada" || t.key === "documento_avulso") {
           payloadInsert.cfop_servico_par = e.cfopPar;
           payloadUpdate.cfop_servico_par = e.cfopPar;
         }
