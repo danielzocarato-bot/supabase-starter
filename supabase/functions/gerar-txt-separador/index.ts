@@ -297,7 +297,11 @@ Deno.serve(async (req) => {
   }
 
   // Geração — 1 linha por item, 33 campos, separador ;
+  console.info(
+    `[gerar-txt-separador] Export modo ${isDocAvulso ? "documento_avulso" : "nfe"} — competencia=${competencia_id} notas=${notas.length}`,
+  );
   const linhas: string[] = [];
+  let somaValorContabil = 0;
 
   for (const n of notas) {
     const itens = itensPorNota.get(n.id) ?? [];
