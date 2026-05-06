@@ -390,6 +390,8 @@ function normalizar(
     uf,
     municipio,
     endereco,
+    municipioIbge,
+    cep,
     numero,
     dataEmissao,
     dataLancamento,
