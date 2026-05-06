@@ -30,8 +30,6 @@ export default function Configuracoes() {
     endereco_completo: "",
     telefone: "",
     sieg_api_key: "",
-    sieg_email: "",
-    sieg_password: "",
   });
 
   const carregar = async () => {
