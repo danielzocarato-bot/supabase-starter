@@ -404,7 +404,7 @@ Deno.serve(async (req) => {
       gerado_por_email: userProfile?.email,
       gerado_por_nome: userProfile?.nome,
       arquivo_nome: filename,
-      formato: "dominio_separador",
+      formato: isDocAvulso ? "dominio_layout_209" : "dominio_separador",
       total_notas: notas?.length ?? 0,
       total_itens: linhas.length,
       bytes_size: bytes.length,
