@@ -202,6 +202,7 @@ export default function ClassificacaoNFSe() {
   const [pendentesModalOpen, setPendentesModalOpen] = useState(false);
   const [pendentesLista, setPendentesLista] = useState<string[]>([]);
   const [pendentesTipo, setPendentesTipo] = useState<"classificacao" | "ibge" | null>(null);
+  const [reenriquecendo, setReenriquecendo] = useState(false);
   const [excluirOpen, setExcluirOpen] = useState(false);
   const [historicoOpen, setHistoricoOpen] = useState(false);
 
