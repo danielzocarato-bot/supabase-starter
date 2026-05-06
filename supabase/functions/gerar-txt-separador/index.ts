@@ -253,7 +253,7 @@ Deno.serve(async (req) => {
 
   // Itens (apenas para modos com itens)
   const itensAll: any[] = [];
-  if (!semItens) {
+  if (!isNfseTomada) {
     const CHUNK = 100;
     for (let i = 0; i < notaIds.length; i += CHUNK) {
       const slice = notaIds.slice(i, i + CHUNK);
