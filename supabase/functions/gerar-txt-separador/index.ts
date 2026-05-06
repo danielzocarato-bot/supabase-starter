@@ -400,16 +400,16 @@ Deno.serve(async (req) => {
         valorProd,                                         // 12 R
         valorDesc,                                         // 13 R
         valorContabil,                                     // 14 R
-        vBC_ICMS,                                          // 15 R
-        pICMS,                                             // 16 R
-        vICMS,                                             // 17 R
-        vIsentaICMS,                                       // 18 R
-        vOutrasICMS,                                       // 19 R
-        vBC_IPI,                                           // 20 R
-        pIPI,                                              // 21 R
-        vIPI,                                              // 22 R
-        vBC_ST,                                            // 23 R
-        vST,                                               // 24 R
+        vBC_ICMS,                                          // 15 R Base ICMS
+        pICMS,                                             // 16 R Aliq ICMS
+        vICMS,                                             // 17 R Valor ICMS
+        vOutrasICMS,                                       // 18 R Outras ICMS
+        vIsentaICMS,                                       // 19 R Isentas ICMS
+        vBC_IPI,                                           // 20 R Base IPI
+        pIPI,                                              // 21 R Aliq IPI
+        vIPI,                                              // 22 R Valor IPI
+        vOutrasIPI,                                        // 23 R Outras IPI
+        vIsentaIPI,                                        // 24 R Isentas IPI
         aspaTexto(codItem),                                // 25 C
         qtde,                                              // 26 R
         valorUnit,                                         // 27 R
