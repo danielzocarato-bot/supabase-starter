@@ -330,6 +330,8 @@ function normalizar(
     extraido.municipio_emitente ?? extraido.municipio_seguradora ?? null;
   const endereco = extraido.endereco_beneficiario ??
     extraido.endereco_emitente ?? extraido.endereco_seguradora ?? null;
+  const municipioIbge = extraido.municipio_ibge ?? null;
+  const cep = extraido.cep ?? null;
   const numero = extraido.numero_documento ?? extraido.numero_apolice ?? null;
   const dataVencimento = extraido.data_vencimento ??
     extraido.data_fim_vigencia ?? null;
