@@ -576,6 +576,8 @@ Deno.serve(async (req) => {
   const ai = await extrairComIA(categoria, mime, b64);
   if (!ai.ok) return json({ ok: false, error: ai.error }, ai.status);
   const extraido = ai.data;
+  await enriquecerComBrasilAPI(extraido);
+  const ufClienteFinal = normalizeUF(extraido.uf_beneficiario ?? extraido.uf_emitente ?? extraido.uf_seguradora) ? ufCliente : ufCliente;
   const n = normalizar(categoria, extraido, ufCliente, periodo);
 
   // Competência
