@@ -1334,7 +1334,7 @@ const TIPOS: {
     key: "nfse_tomada",
     titulo: "NFSe — Serviços Tomados",
     descricao: "Notas fiscais de serviço recebidas pelo cliente.",
-    layouts: [{ value: "dominio_leiaute_18", label: "Domínio — Leiaute 18 (Serviços)" }],
+    layouts: [{ value: "dominio_layout_209", label: "Domínio — Layout 209 (NF Entradas)" }],
   },
   {
     key: "nfe_entrada",
@@ -1366,7 +1366,7 @@ function AbaOperacoes({ clienteId }: { clienteId: string }) {
     documento_avulso: null,
   });
   const [estado, setEstado] = useState<Record<TipoOperacao, { ativo: boolean; layout: string; cfopPar: string }>>({
-    nfse_tomada: { ativo: false, layout: "dominio_leiaute_18", cfopPar: "1933_2933" },
+    nfse_tomada: { ativo: false, layout: "dominio_layout_209", cfopPar: "1933_2933" },
     nfe_entrada: { ativo: false, layout: "dominio_separador", cfopPar: "1933_2933" },
     nfe_saida: { ativo: false, layout: "dominio_separador", cfopPar: "1933_2933" },
     documento_avulso: { ativo: false, layout: "dominio_layout_209", cfopPar: "1933_2933" },
@@ -1391,7 +1391,7 @@ function AbaOperacoes({ clienteId }: { clienteId: string }) {
       documento_avulso: null,
     };
     const est: Record<TipoOperacao, { ativo: boolean; layout: string; cfopPar: string }> = {
-      nfse_tomada: { ativo: false, layout: "dominio_leiaute_18", cfopPar: "1933_2933" },
+      nfse_tomada: { ativo: false, layout: "dominio_layout_209", cfopPar: "1933_2933" },
       nfe_entrada: { ativo: false, layout: "dominio_separador", cfopPar: "1933_2933" },
       nfe_saida: { ativo: false, layout: "dominio_separador", cfopPar: "1933_2933" },
       documento_avulso: { ativo: false, layout: "dominio_layout_209", cfopPar: "1933_2933" },
