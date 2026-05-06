@@ -84,8 +84,6 @@ export default function Configuracoes() {
         endereco_completo: form.endereco_completo.trim() || null,
         telefone: form.telefone.trim() || null,
         sieg_api_key: form.sieg_api_key.trim() || null,
-        sieg_email: form.sieg_email.trim() || null,
-        sieg_password: form.sieg_password.trim() || null,
       } as any)
       .eq("id", 1);
     setSaving(false);
