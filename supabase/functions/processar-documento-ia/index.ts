@@ -636,6 +636,8 @@ Deno.serve(async (req) => {
       arquivo_original: storagePath,
       mime,
       data_lancamento: n.dataLancamento,
+      municipio_ibge: n.municipioIbge,
+      cep: n.cep,
     },
   };
 
