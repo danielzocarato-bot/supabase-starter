@@ -50,8 +50,9 @@ function formatDateTimeBR(iso: string): string {
 }
 
 function formatoLabel(f: string): string {
-  if (f === "leiaute_18") return "NFSe — Leiaute 18";
   if (f === "dominio_separador") return "NFe — Excel 2.0";
+  if (f === "dominio_layout_209") return "Domínio — Layout 209";
+  if (f === "leiaute_18") return "NFSe — Leiaute 18 (legado)";
   return f;
 }
 
