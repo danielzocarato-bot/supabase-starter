@@ -1315,7 +1315,7 @@ function AbaCompetencias({ clienteId }: { clienteId: string }) {
 // ============================================================
 // Aba Operações — tipos de operação atendidos pelo cliente
 // ============================================================
-type TipoOperacao = "nfse_tomada" | "nfe_entrada" | "nfe_saida";
+type TipoOperacao = "nfse_tomada" | "nfe_entrada" | "nfe_saida" | "documento_avulso";
 
 type OperacaoRow = {
   cliente_id: string;
@@ -1347,6 +1347,12 @@ const TIPOS: {
     descricao: "Mercadorias vendidas pelo cliente.",
     layouts: [{ value: "dominio_separador", label: "Domínio — com Separador" }],
   },
+  {
+    key: "documento_avulso",
+    titulo: "Documentos Avulsos (boletos, faturas, apólices via IA)",
+    descricao: "Documentos sem NFSe/NFe processados via OCR/IA.",
+    layouts: [{ value: "dominio_layout_209", label: "Domínio — Layout 209 (NF Entradas)" }],
+  },
 ];
 
 function AbaOperacoes({ clienteId }: { clienteId: string }) {
@@ -1356,11 +1362,13 @@ function AbaOperacoes({ clienteId }: { clienteId: string }) {
     nfse_tomada: null,
     nfe_entrada: null,
     nfe_saida: null,
+    documento_avulso: null,
   });
   const [estado, setEstado] = useState<Record<TipoOperacao, { ativo: boolean; layout: string }>>({
     nfse_tomada: { ativo: false, layout: "dominio_leiaute_18" },
     nfe_entrada: { ativo: false, layout: "dominio_separador" },
     nfe_saida: { ativo: false, layout: "dominio_separador" },
+    documento_avulso: { ativo: false, layout: "dominio_layout_209" },
   });
   const [bloqueio, setBloqueio] = useState<{ tipo: TipoOperacao; titulo: string } | null>(null);
 
@@ -1379,11 +1387,13 @@ function AbaOperacoes({ clienteId }: { clienteId: string }) {
       nfse_tomada: null,
       nfe_entrada: null,
       nfe_saida: null,
+      documento_avulso: null,
     };
     const est = {
       nfse_tomada: { ativo: false, layout: "dominio_leiaute_18" },
       nfe_entrada: { ativo: false, layout: "dominio_separador" },
       nfe_saida: { ativo: false, layout: "dominio_separador" },
+      documento_avulso: { ativo: false, layout: "dominio_layout_209" },
     };
     (data ?? []).forEach((r: OperacaoRow) => {
       orig[r.tipo] = r;
