@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import ClassificacaoNFSe from "./ClassificacaoNFSe";
 import ClassificacaoNFe from "./ClassificacaoNFe";
 
-type Tipo = "nfse_tomada" | "nfe_entrada" | "nfe_saida";
+type Tipo = "nfse_tomada" | "nfe_entrada" | "nfe_saida" | "documento_avulso";
 
 export default function Classificacao() {
   const { id } = useParams<{ id: string }>();
@@ -52,5 +52,7 @@ export default function Classificacao() {
     );
   }
 
-  return tipo === "nfse_tomada" ? <ClassificacaoNFSe /> : <ClassificacaoNFe />;
+  if (tipo === "nfse_tomada") return <ClassificacaoNFSe />;
+  if (tipo === "documento_avulso") return <ClassificacaoNFe />;
+  return <ClassificacaoNFe />;
 }
