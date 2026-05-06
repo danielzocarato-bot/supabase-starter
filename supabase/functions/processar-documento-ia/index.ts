@@ -345,7 +345,7 @@ function normalizar(
   extraido: any,
   ufCliente: string | null,
   periodo: string,
-  cfopPar: string = "1933_2933",
+  cfopPar: string = "1949_2949",
 ) {
   const cnpj = extraido.cnpj_beneficiario ?? extraido.cnpj_emitente ??
     extraido.cnpj_seguradora ?? null;
@@ -367,8 +367,13 @@ function normalizar(
   const descricao = extraido.descricao ??
     `${categoria.toUpperCase()} - ${numero ?? "sem número"}`;
 
-  // CFOP: par configurado no cliente (default 1933/2933).
-  const [cfopDentro, cfopFora] = cfopPar === "1949_2949"
+  // CFOP: par configurado no cliente (default 1949/2949).
+  const [cfopDentro, cfopFora] = cfopPar === "1933_2933"
+    ? ["1933", "2933"]
+    : ["1949", "2949"];
+  // (mantém compat: qualquer valor diferente de 1933_2933 cai no novo padrão)
+  void 0;
+  const _ignored = cfopPar === "1949_2949"
     ? ["1949", "2949"]
     : ["1933", "2933"];
   let cfop: string;
