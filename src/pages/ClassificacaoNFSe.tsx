@@ -1156,7 +1156,53 @@ export default function ClassificacaoNFSe() {
                 <p key={i} className="text-sm font-mono">{p}</p>
               ))}
             </div>
-            <DialogFooter>
+            <DialogFooter className="gap-2 sm:gap-2">
+              {pendentesTipo === "ibge" && (
+                <Button
+                  variant="outline"
+                  disabled={reenriquecendo}
+                  onClick={async () => {
+                    if (!competencia) return;
+                    setReenriquecendo(true);
+                    try {
+                      const { data, error } = await supabase.functions.invoke(
+                        "reenriquecer-prestadores",
+                        { body: { competencia_id: competencia.id } },
+                      );
+                      if (error) throw error;
+                      const r = data as {
+                        atualizadas?: number;
+                        sem_dados?: number;
+                        total_pendentes?: number;
+                      };
+                      if ((r.atualizadas ?? 0) > 0) {
+                        toast.success(
+                          `${r.atualizadas} nota(s) atualizada(s).`,
+                          {
+                            description:
+                              (r.sem_dados ?? 0) > 0
+                                ? `${r.sem_dados} ainda sem dados — ajuste manual será necessário.`
+                                : "Tente exportar novamente.",
+                          },
+                        );
+                      } else {
+                        toast.error("Nenhuma nota pôde ser enriquecida automaticamente.", {
+                          description:
+                            "As fontes públicas (Receita/IBGE) não retornaram dados. Edite o município manualmente.",
+                        });
+                      }
+                      setPendentesModalOpen(false);
+                    } catch (e: any) {
+                      toast.error("Falha ao re-enriquecer", { description: e?.message ?? String(e) });
+                    } finally {
+                      setReenriquecendo(false);
+                    }
+                  }}
+                >
+                  {reenriquecendo && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                  Re-enriquecer prestadores
+                </Button>
+              )}
               <Button
                 onClick={() => setPendentesModalOpen(false)}
                 className="bg-brand text-brand-foreground hover:bg-brand/90"
