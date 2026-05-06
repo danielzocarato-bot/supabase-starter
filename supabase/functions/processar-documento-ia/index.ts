@@ -773,7 +773,13 @@ Deno.serve(async (req) => {
       { onConflict: "nota_id,numero_item" },
     );
   if (itErr) {
-    console.error("[processar-documento-ia] Falha item", itErr);
+    console.error("[processar-documento-ia] Falha item, fazendo rollback da nota", itErr);
+    // Rollback: remove a nota recém-criada para não deixar nota órfã sem item
+    await admin.from("notas_fiscais").delete().eq("id", notaSaved.id);
+    return json(
+      { ok: false, error: `Falha ao salvar item da nota: ${itErr.message}` },
+      500,
+    );
   }
 
   return json({
