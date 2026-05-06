@@ -323,6 +323,7 @@ Deno.serve(async (req) => {
   );
   const linhas: string[] = [];
   let somaValorContabil = 0;
+  const clienteUf = (cliente?.uf ?? "").toString().trim().toUpperCase();
 
 
   for (const n of notas) {
