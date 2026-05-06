@@ -1414,7 +1414,7 @@ function AbaOperacoes({ clienteId }: { clienteId: string }) {
       const eraAtivo = !!o;
       if (eraAtivo !== e.ativo) return true;
       if (eraAtivo && o!.layout_export !== e.layout) return true;
-      if (eraAtivo && t.key === "nfse_tomada" && (o!.cfop_servico_par ?? "1933_2933") !== e.cfopPar) return true;
+      if (eraAtivo && (t.key === "nfse_tomada" || t.key === "documento_avulso") && (o!.cfop_servico_par ?? "1933_2933") !== e.cfopPar) return true;
       return false;
     });
   }, [original, estado]);
@@ -1453,7 +1453,7 @@ function AbaOperacoes({ clienteId }: { clienteId: string }) {
         const eraAtivo = !!o;
         const payloadInsert: any = { cliente_id: clienteId, tipo: t.key, layout_export: e.layout };
         const payloadUpdate: any = { layout_export: e.layout };
-        if (t.key === "nfse_tomada") {
+        if (t.key === "nfse_tomada" || t.key === "documento_avulso") {
           payloadInsert.cfop_servico_par = e.cfopPar;
           payloadUpdate.cfop_servico_par = e.cfopPar;
         }
@@ -1472,7 +1472,7 @@ function AbaOperacoes({ clienteId }: { clienteId: string }) {
         } else if (
           e.ativo && eraAtivo && (
             o!.layout_export !== e.layout ||
-            (t.key === "nfse_tomada" && (o!.cfop_servico_par ?? "1933_2933") !== e.cfopPar)
+            ((t.key === "nfse_tomada" || t.key === "documento_avulso") && (o!.cfop_servico_par ?? "1933_2933") !== e.cfopPar)
           )
         ) {
           const { error } = await (supabase as any)
@@ -1537,7 +1537,7 @@ function AbaOperacoes({ clienteId }: { clienteId: string }) {
                         <option key={l.value} value={l.value}>{l.label}</option>
                       ))}
                     </select>
-                    {t.key === "nfse_tomada" && (
+                    {(t.key === "nfse_tomada" || t.key === "documento_avulso") && (
                       <div className="space-y-2 pt-3">
                         <Label className="text-xs text-muted-foreground">Par de CFOP (serviço tomado)</Label>
                         <select

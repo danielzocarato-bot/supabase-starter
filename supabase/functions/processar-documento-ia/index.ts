@@ -345,6 +345,7 @@ function normalizar(
   extraido: any,
   ufCliente: string | null,
   periodo: string,
+  cfopPar: string = "1933_2933",
 ) {
   const cnpj = extraido.cnpj_beneficiario ?? extraido.cnpj_emitente ??
     extraido.cnpj_seguradora ?? null;
@@ -366,25 +367,27 @@ function normalizar(
   const descricao = extraido.descricao ??
     `${categoria.toUpperCase()} - ${numero ?? "sem número"}`;
 
-  // CFOP: decidido por código com base nas UFs.
+  // CFOP: par configurado no cliente (default 1933/2933).
+  const [cfopDentro, cfopFora] = cfopPar === "1949_2949"
+    ? ["1949", "2949"]
+    : ["1933", "2933"];
   let cfop: string;
   if (!uf) {
     console.warn(
-      "[processar-documento-ia] UF do prestador desconhecida, fallback para CFOP 1949",
+      `[processar-documento-ia] UF do prestador desconhecida, fallback para CFOP ${cfopDentro}`,
       { cnpj_prestador: cnpj },
     );
-    cfop = "1949";
+    cfop = cfopDentro;
   } else if (ufCliente && uf === ufCliente) {
-    cfop = "1949";
+    cfop = cfopDentro;
   } else if (ufCliente && uf !== ufCliente) {
-    cfop = "2949";
+    cfop = cfopFora;
   } else {
-    // ufCliente desconhecida — assume mesma UF
     console.warn(
-      "[processar-documento-ia] UF do cliente desconhecida, assumindo CFOP 1949",
+      `[processar-documento-ia] UF do cliente desconhecida, assumindo CFOP ${cfopDentro}`,
       { cnpj_prestador: cnpj },
     );
-    cfop = "1949";
+    cfop = cfopDentro;
   }
 
   // Datas: aplicar regra de competência.
@@ -573,7 +576,7 @@ Deno.serve(async (req) => {
 
   const { data: op } = await admin
     .from("cliente_operacoes")
-    .select("tipo, ativo")
+    .select("tipo, ativo, cfop_servico_par")
     .eq("cliente_id", cliente_id)
     .eq("tipo", "documento_avulso")
     .eq("ativo", true)
@@ -609,7 +612,8 @@ Deno.serve(async (req) => {
   const extraido = ai.data;
   await enriquecerComBrasilAPI(extraido);
   
-  const n = normalizar(categoria, extraido, ufCliente, periodo);
+  const cfopPar = ((op as any)?.cfop_servico_par ?? "1933_2933") as string;
+  const n = normalizar(categoria, extraido, ufCliente, periodo, cfopPar);
 
   // Competência
   const { data: comp, error: compErr } = await admin
