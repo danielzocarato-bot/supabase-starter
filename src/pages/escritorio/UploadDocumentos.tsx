@@ -111,28 +111,43 @@ export default function UploadDocumentos() {
 
   const contextoOk = !!clienteId && /^\d{4}-\d{2}$/.test(periodo);
 
-  // Carrega clientes com operação documento_avulso ativa
+  // Carrega todos os clientes ativos. A operação "documento_avulso" é
+  // habilitada automaticamente ao selecionar (upsert em cliente_operacoes).
   useEffect(() => {
     (async () => {
       setCarregandoClientes(true);
-      const { data, error } = await (supabase as any)
-        .from("cliente_operacoes")
-        .select("cliente_id, clientes(id, razao_social, cnpj)")
-        .eq("tipo", "documento_avulso")
-        .eq("ativo", true);
+      const { data, error } = await supabase
+        .from("clientes")
+        .select("id, razao_social, cnpj")
+        .eq("ativo", true)
+        .order("razao_social", { ascending: true });
       if (error) {
         toast.error("Falha ao carregar clientes", { description: error.message });
         setCarregandoClientes(false);
         return;
       }
-      const lista: Cliente[] = (data ?? [])
-        .map((r: any) => r.clientes)
-        .filter(Boolean)
-        .sort((a: Cliente, b: Cliente) => a.razao_social.localeCompare(b.razao_social));
-      setClientes(lista);
+      setClientes((data ?? []) as Cliente[]);
       setCarregandoClientes(false);
     })();
   }, []);
+
+  // Garante operação documento_avulso ativa para o cliente selecionado
+  useEffect(() => {
+    if (!clienteId) return;
+    (async () => {
+      const { data: existente } = await (supabase as any)
+        .from("cliente_operacoes")
+        .select("cliente_id")
+        .eq("cliente_id", clienteId)
+        .eq("tipo", "documento_avulso")
+        .maybeSingle();
+      if (!existente) {
+        await (supabase as any)
+          .from("cliente_operacoes")
+          .insert({ cliente_id: clienteId, tipo: "documento_avulso", layout_export: "dominio_layout_209", ativo: true });
+      }
+    })();
+  }, [clienteId]);
 
   const clienteSelecionado = useMemo(
     () => clientes.find((c) => c.id === clienteId) ?? null,
