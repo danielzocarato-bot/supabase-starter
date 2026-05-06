@@ -51,8 +51,6 @@ export default function Configuracoes() {
       endereco_completo: data?.endereco_completo ?? "",
       telefone: data?.telefone ?? "",
       sieg_api_key: (data as any)?.sieg_api_key ?? "",
-      sieg_email: (data as any)?.sieg_email ?? "",
-      sieg_password: (data as any)?.sieg_password ?? "",
     });
     setLoading(false);
   };
