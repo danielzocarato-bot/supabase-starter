@@ -16,8 +16,6 @@ type ConfigEscritorio = {
   endereco_completo: string | null;
   telefone: string | null;
   sieg_api_key: string | null;
-  sieg_email: string | null;
-  sieg_password: string | null;
   updated_at: string | null;
 };
 
@@ -32,8 +30,6 @@ export default function Configuracoes() {
     endereco_completo: "",
     telefone: "",
     sieg_api_key: "",
-    sieg_email: "",
-    sieg_password: "",
   });
 
   const carregar = async () => {
@@ -55,8 +51,6 @@ export default function Configuracoes() {
       endereco_completo: data?.endereco_completo ?? "",
       telefone: data?.telefone ?? "",
       sieg_api_key: (data as any)?.sieg_api_key ?? "",
-      sieg_email: (data as any)?.sieg_email ?? "",
-      sieg_password: (data as any)?.sieg_password ?? "",
     });
     setLoading(false);
   };
@@ -71,9 +65,7 @@ export default function Configuracoes() {
       form.from_name !== (config.from_name ?? "") ||
       form.endereco_completo !== (config.endereco_completo ?? "") ||
       form.telefone !== (config.telefone ?? "") ||
-      form.sieg_api_key !== (config.sieg_api_key ?? "") ||
-      form.sieg_email !== ((config as any).sieg_email ?? "") ||
-      form.sieg_password !== ((config as any).sieg_password ?? ""));
+      form.sieg_api_key !== (config.sieg_api_key ?? ""));
 
   const handleSalvar = async () => {
     if (
@@ -92,8 +84,6 @@ export default function Configuracoes() {
         endereco_completo: form.endereco_completo.trim() || null,
         telefone: form.telefone.trim() || null,
         sieg_api_key: form.sieg_api_key.trim() || null,
-        sieg_email: form.sieg_email.trim() || null,
-        sieg_password: form.sieg_password.trim() || null,
       } as any)
       .eq("id", 1);
     setSaving(false);

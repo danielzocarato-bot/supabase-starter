@@ -109,15 +109,24 @@ async function sha256Hex(content: string | Uint8Array): Promise<string> {
   return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-// CP1252 / Latin-1 (mesma estratégia do gerar-txt-dominio)
-function toLatin1Bytes(s: string): Uint8Array {
+// CP1252 / Latin-1 — substitui caracteres fora do range por "?" e loga ocorrências.
+function toLatin1Bytes(s: string): { bytes: Uint8Array; substituidos: number } {
   const normalizado = s.normalize("NFD").replace(/\p{Diacritic}/gu, "");
   const bytes = new Uint8Array(normalizado.length);
+  let substituidos = 0;
   for (let i = 0; i < normalizado.length; i++) {
     const code = normalizado.charCodeAt(i);
-    bytes[i] = code < 256 ? code : 0x3F;
+    if (code < 256) {
+      bytes[i] = code;
+    } else {
+      console.warn(
+        `[gerar-txt-separador] caractere fora de Latin-1 substituído por "?": "${normalizado[i]}" (codepoint=0x${code.toString(16).toUpperCase()})`,
+      );
+      bytes[i] = 0x3F;
+      substituidos++;
+    }
   }
-  return bytes;
+  return { bytes, substituidos };
 }
 
 Deno.serve(async (req) => {
@@ -509,12 +518,12 @@ Deno.serve(async (req) => {
     linhas.push(campos.join(";"));
   }
 
-  console.info(
-    `[gerar-txt-separador] Export concluído — notas=${notas.length} itens=${linhas.length} soma_valor_contabil=${somaValorContabil.toFixed(2)}`,
-  );
-
   const conteudo = linhas.join("\r\n") + "\r\n";
-  const bytes = toLatin1Bytes(conteudo);
+  const { bytes, substituidos: caracteres_substituidos } = toLatin1Bytes(conteudo);
+
+  console.info(
+    `[gerar-txt-separador] Export concluído — notas=${notas.length} itens=${linhas.length} soma_valor_contabil=${somaValorContabil.toFixed(2)} caracteres_substituidos=${caracteres_substituidos}`,
+  );
 
   // Atualiza status
   const { error: updErr } = await admin
