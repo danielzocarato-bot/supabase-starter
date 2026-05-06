@@ -345,7 +345,7 @@ function normalizar(
   extraido: any,
   ufCliente: string | null,
   periodo: string,
-  cfopPar: string = "1933_2933",
+  cfopPar: string = "1949_2949",
 ) {
   const cnpj = extraido.cnpj_beneficiario ?? extraido.cnpj_emitente ??
     extraido.cnpj_seguradora ?? null;
@@ -367,10 +367,10 @@ function normalizar(
   const descricao = extraido.descricao ??
     `${categoria.toUpperCase()} - ${numero ?? "sem número"}`;
 
-  // CFOP: par configurado no cliente (default 1933/2933).
-  const [cfopDentro, cfopFora] = cfopPar === "1949_2949"
-    ? ["1949", "2949"]
-    : ["1933", "2933"];
+  // CFOP: par configurado no cliente (default 1949/2949).
+  const [cfopDentro, cfopFora] = cfopPar === "1933_2933"
+    ? ["1933", "2933"]
+    : ["1949", "2949"];
   let cfop: string;
   if (!uf) {
     console.warn(
@@ -612,7 +612,7 @@ Deno.serve(async (req) => {
   const extraido = ai.data;
   await enriquecerComBrasilAPI(extraido);
   
-  const cfopPar = ((op as any)?.cfop_servico_par ?? "1933_2933") as string;
+  const cfopPar = ((op as any)?.cfop_servico_par ?? "1949_2949") as string;
   const n = normalizar(categoria, extraido, ufCliente, periodo, cfopPar);
 
   // Competência
