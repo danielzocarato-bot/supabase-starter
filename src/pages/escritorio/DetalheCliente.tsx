@@ -1334,7 +1334,7 @@ const TIPOS: {
     key: "nfse_tomada",
     titulo: "NFSe — Serviços Tomados",
     descricao: "Notas fiscais de serviço recebidas pelo cliente.",
-    layouts: [{ value: "dominio_leiaute_18", label: "Domínio — Leiaute 18 (Serviços)" }],
+    layouts: [{ value: "dominio_layout_209", label: "Domínio — Layout 209 (NF Entradas)" }],
   },
   {
     key: "nfe_entrada",
