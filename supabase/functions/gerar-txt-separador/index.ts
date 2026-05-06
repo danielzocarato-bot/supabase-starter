@@ -224,7 +224,7 @@ Deno.serve(async (req) => {
   let notasQuery = admin
     .from("notas_fiscais")
     .select(
-      "id, numero_nfe, chave_nfe, emissao_nfe, prestador_cnpj, prestador_razao, prestador_uf, prestador_municipio, prestador_endereco, raw_data, tipo_operacao_nfe, tipo_documento, cancelada",
+      "id, numero_nfe, chave_nfe, emissao_nfe, prestador_cnpj, prestador_razao, prestador_uf, prestador_municipio, prestador_endereco, raw_data, tipo_operacao_nfe, tipo_documento, cancelada, valor_nfe, valor_contabil",
     )
     .eq("competencia_id", competencia_id)
     .eq("cancelada", false);
@@ -297,7 +297,11 @@ Deno.serve(async (req) => {
   }
 
   // Geração — 1 linha por item, 33 campos, separador ;
+  console.info(
+    `[gerar-txt-separador] Export modo ${isDocAvulso ? "documento_avulso" : "nfe"} — competencia=${competencia_id} notas=${notas.length}`,
+  );
   const linhas: string[] = [];
+  let somaValorContabil = 0;
 
   for (const n of notas) {
     const itens = itensPorNota.get(n.id) ?? [];
@@ -323,15 +327,63 @@ Deno.serve(async (req) => {
       const pis = it.raw_data?.pis ?? {};
       const cofins = it.raw_data?.cofins ?? {};
 
-      const valorProdRaw = prod.vProd ?? it.valor;
-      const valorDescRaw = prod.vDesc ?? 0;
-      const valorProd = formatDecimalBR(valorProdRaw);
-      const valorDesc = formatDecimalBR(valorDescRaw);
-      const valorContabil = formatDecimalBR(parseNum(valorProdRaw) - parseNum(valorDescRaw));
+      let valorProdRaw = prod.vProd ?? it.valor;
+      let valorDescRaw = prod.vDesc ?? 0;
+      let valorProd = formatDecimalBR(valorProdRaw);
+      let valorDesc = formatDecimalBR(valorDescRaw);
+      let valorContabil = formatDecimalBR(parseNum(valorProdRaw) - parseNum(valorDescRaw));
 
       const codItem = formatTexto(it.codigo_produto);
-      const qtde = formatDecimalBR(prod.qCom ?? 0, 4);
-      const valorUnit = formatDecimalBR(prod.vUnCom ?? 0, 4);
+      let qtde = formatDecimalBR(prod.qCom ?? 0, 4);
+      let valorUnit = formatDecimalBR(prod.vUnCom ?? 0, 4);
+
+      // Campos fiscais (default — fluxo NFe)
+      let vBC_ICMS = formatDecimalBR(icms.vBC ?? 0);
+      let pICMS = formatDecimalBR(icms.pICMS ?? 0);
+      let vICMS = formatDecimalBR(icms.vICMS ?? 0);
+      let vIsentaICMS = "0";
+      let vOutrasICMS = "0";
+      let vBC_IPI = formatDecimalBR(ipi.vBC ?? 0);
+      let pIPI = formatDecimalBR(ipi.pIPI ?? 0);
+      let vIPI = formatDecimalBR(ipi.vIPI ?? 0);
+      let vBC_ST = "0";
+      let vST = "0";
+      let cstPisCofins = formatInt(pis.CST ?? cofins.CST ?? 0);
+      let vBC_PisCofins = formatDecimalBR(pis.vBC ?? cofins.vBC ?? 0);
+      let pPIS = formatDecimalBR(pis.pPIS ?? 0);
+      let vPIS = formatDecimalBR(pis.vPIS ?? 0);
+      let pCOFINS = formatDecimalBR(cofins.pCOFINS ?? 0);
+      let vCOFINS = formatDecimalBR(cofins.vCOFINS ?? 0);
+
+      // Override para documento_avulso: valor total do documento em
+      // valor_produtos / valor_contabil / outras_icms; demais campos zerados.
+      if (isDocAvulso) {
+        const totalDoc = parseNum((n as any).valor_nfe ?? (n as any).valor_contabil ?? prod.vProd ?? it.valor);
+        const totalFmt = formatDecimalBR(totalDoc);
+        valorProd = totalFmt;
+        valorContabil = totalFmt;
+        vOutrasICMS = totalFmt;
+
+        valorDesc = "0,00";
+        vBC_ICMS = "0,00";
+        pICMS = "0,00";
+        vICMS = "0,00";
+        vIsentaICMS = "0";
+        vBC_IPI = "0,00";
+        pIPI = "0,00";
+        vIPI = "0,00";
+        vBC_ST = "0";
+        vST = "0";
+        vBC_PisCofins = "0,00";
+        pPIS = "0,00";
+        vPIS = "0,00";
+        pCOFINS = "0,00";
+        vCOFINS = "0,00";
+        qtde = formatDecimalBR(0, 4);
+        valorUnit = formatDecimalBR(0, 4);
+      }
+
+      somaValorContabil += parseNum(valorContabil);
 
       const campos = [
         aspaTexto(cnpjPrestador),                          // 1  C
@@ -348,30 +400,34 @@ Deno.serve(async (req) => {
         valorProd,                                         // 12 R
         valorDesc,                                         // 13 R
         valorContabil,                                     // 14 R
-        formatDecimalBR(icms.vBC ?? 0),                    // 15 R
-        formatDecimalBR(icms.pICMS ?? 0),                  // 16 R
-        formatDecimalBR(icms.vICMS ?? 0),                  // 17 R
-        "0",                                               // 18 R
-        "0",                                               // 19 R
-        formatDecimalBR(ipi.vBC ?? 0),                     // 20 R
-        formatDecimalBR(ipi.pIPI ?? 0),                    // 21 R
-        formatDecimalBR(ipi.vIPI ?? 0),                    // 22 R
-        "0",                                               // 23 R
-        "0",                                               // 24 R
+        vBC_ICMS,                                          // 15 R
+        pICMS,                                             // 16 R
+        vICMS,                                             // 17 R
+        vIsentaICMS,                                       // 18 R
+        vOutrasICMS,                                       // 19 R
+        vBC_IPI,                                           // 20 R
+        pIPI,                                              // 21 R
+        vIPI,                                              // 22 R
+        vBC_ST,                                            // 23 R
+        vST,                                               // 24 R
         aspaTexto(codItem),                                // 25 C
         qtde,                                              // 26 R
         valorUnit,                                         // 27 R
-        formatInt(pis.CST ?? cofins.CST ?? 0),             // 28 N
-        formatDecimalBR(pis.vBC ?? cofins.vBC ?? 0),       // 29 R
-        formatDecimalBR(pis.pPIS ?? 0),                    // 30 R
-        formatDecimalBR(pis.vPIS ?? 0),                    // 31 R
-        formatDecimalBR(cofins.pCOFINS ?? 0),              // 32 R
-        formatDecimalBR(cofins.vCOFINS ?? 0),              // 33 R
+        cstPisCofins,                                      // 28 N
+        vBC_PisCofins,                                     // 29 R
+        pPIS,                                              // 30 R
+        vPIS,                                              // 31 R
+        pCOFINS,                                           // 32 R
+        vCOFINS,                                           // 33 R
       ];
 
       linhas.push(campos.join(";"));
     }
   }
+
+  console.info(
+    `[gerar-txt-separador] Export concluído — notas=${notas.length} itens=${linhas.length} soma_valor_contabil=${somaValorContabil.toFixed(2)}`,
+  );
 
   const conteudo = linhas.join("\r\n") + "\r\n";
   const bytes = toLatin1Bytes(conteudo);
