@@ -760,6 +760,8 @@ Deno.serve(async (req) => {
       data_emissao: n.dataEmissao,
       data_lancamento: n.dataLancamento,
       data_vencimento: n.dataVencimento,
+      municipio_ibge: n.municipioIbge,
+      cep: n.cep,
     },
   });
 });
