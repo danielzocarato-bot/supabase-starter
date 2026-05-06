@@ -1414,7 +1414,7 @@ function AbaOperacoes({ clienteId }: { clienteId: string }) {
       const eraAtivo = !!o;
       if (eraAtivo !== e.ativo) return true;
       if (eraAtivo && o!.layout_export !== e.layout) return true;
-      if (eraAtivo && (t.key === "nfse_tomada" || t.key === "documento_avulso") && (o!.cfop_servico_par ?? "1933_2933") !== e.cfopPar) return true;
+      if (eraAtivo && (t.key === "nfse_tomada" || t.key === "documento_avulso") && (o!.cfop_servico_par ?? "1949_2949") !== e.cfopPar) return true;
       return false;
     });
   }, [original, estado]);
