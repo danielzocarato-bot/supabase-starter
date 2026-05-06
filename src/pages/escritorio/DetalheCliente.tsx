@@ -1451,10 +1451,16 @@ function AbaOperacoes({ clienteId }: { clienteId: string }) {
         const o = original[t.key];
         const e = estado[t.key];
         const eraAtivo = !!o;
+        const payloadInsert: any = { cliente_id: clienteId, tipo: t.key, layout_export: e.layout };
+        const payloadUpdate: any = { layout_export: e.layout };
+        if (t.key === "nfse_tomada") {
+          payloadInsert.cfop_servico_par = e.cfopPar;
+          payloadUpdate.cfop_servico_par = e.cfopPar;
+        }
         if (e.ativo && !eraAtivo) {
           const { error } = await (supabase as any)
             .from("cliente_operacoes")
-            .insert({ cliente_id: clienteId, tipo: t.key, layout_export: e.layout });
+            .insert(payloadInsert);
           if (error) throw error;
         } else if (!e.ativo && eraAtivo) {
           const { error } = await (supabase as any)
@@ -1463,10 +1469,15 @@ function AbaOperacoes({ clienteId }: { clienteId: string }) {
             .eq("cliente_id", clienteId)
             .eq("tipo", t.key);
           if (error) throw error;
-        } else if (e.ativo && eraAtivo && o!.layout_export !== e.layout) {
+        } else if (
+          e.ativo && eraAtivo && (
+            o!.layout_export !== e.layout ||
+            (t.key === "nfse_tomada" && (o!.cfop_servico_par ?? "1933_2933") !== e.cfopPar)
+          )
+        ) {
           const { error } = await (supabase as any)
             .from("cliente_operacoes")
-            .update({ layout_export: e.layout })
+            .update(payloadUpdate)
             .eq("cliente_id", clienteId)
             .eq("tipo", t.key);
           if (error) throw error;
