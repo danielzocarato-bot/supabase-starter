@@ -229,12 +229,14 @@ Deno.serve(async (req) => {
   let notasQuery = admin
     .from("notas_fiscais")
     .select(
-      "id, numero_nfe, chave_nfe, emissao_nfe, prestador_cnpj, prestador_razao, prestador_uf, prestador_municipio, prestador_endereco, raw_data, tipo_operacao_nfe, tipo_documento, cancelada, valor_nfe, valor_contabil",
+      "id, numero_nfe, chave_nfe, emissao_nfe, prestador_cnpj, prestador_razao, prestador_uf, prestador_municipio, prestador_endereco, raw_data, tipo_operacao_nfe, tipo_documento, cancelada, valor_nfe, valor_contabil, desconto, acumulador_id, acumuladores:acumulador_id ( codigo )",
     )
     .eq("competencia_id", competencia_id)
     .eq("cancelada", false);
   if (isDocAvulso) {
     notasQuery = notasQuery.in("tipo_documento", ["boleto", "fatura", "apolice"]);
+  } else if (isNfseTomada) {
+    notasQuery = notasQuery.eq("tipo_documento", "nfse");
   } else {
     notasQuery = notasQuery.eq("tipo_documento", "nfe");
   }
@@ -247,22 +249,24 @@ Deno.serve(async (req) => {
 
   const notaIds = notas.map((n) => n.id);
 
-  // Itens (paginado)
+  // Itens (apenas para modos com itens)
   const itensAll: any[] = [];
-  const CHUNK = 100;
-  for (let i = 0; i < notaIds.length; i += CHUNK) {
-    const slice = notaIds.slice(i, i + CHUNK);
-    const { data: itens, error: itensErr } = await admin
-      .from("notas_fiscais_itens")
-      .select(
-        "id, nota_id, numero_item, codigo_produto, descricao_produto, ncm, cfop, valor, raw_data, acumulador_id, acumuladores:acumulador_id ( codigo )",
-      )
-      .in("nota_id", slice)
-      .order("numero_item", { ascending: true });
-    if (itensErr) {
-      return json({ ok: false, error: `Falha ao carregar itens: ${itensErr.message}` }, 500);
+  if (!semItens) {
+    const CHUNK = 100;
+    for (let i = 0; i < notaIds.length; i += CHUNK) {
+      const slice = notaIds.slice(i, i + CHUNK);
+      const { data: itens, error: itensErr } = await admin
+        .from("notas_fiscais_itens")
+        .select(
+          "id, nota_id, numero_item, codigo_produto, descricao_produto, ncm, cfop, valor, raw_data, acumulador_id, acumuladores:acumulador_id ( codigo )",
+        )
+        .in("nota_id", slice)
+        .order("numero_item", { ascending: true });
+      if (itensErr) {
+        return json({ ok: false, error: `Falha ao carregar itens: ${itensErr.message}` }, 500);
+      }
+      if (itens) itensAll.push(...itens);
     }
-    if (itens) itensAll.push(...itens);
   }
 
   // Index notas por id
@@ -271,14 +275,24 @@ Deno.serve(async (req) => {
 
   // Pendências de classificação
   const pendentes: string[] = [];
-  for (const it of itensAll) {
-    if (!it.acumulador_id) {
-      const n = notaById.get(it.nota_id);
-      pendentes.push(
-        `NF ${n?.numero_nfe ?? "?"} item ${it.numero_item ?? "?"} - ${
-          it.descricao_produto ?? "Produto sem descrição"
-        } (${n?.prestador_razao ?? "Sem parceiro"})`,
-      );
+  if (semItens) {
+    for (const n of notas) {
+      if (!n.acumulador_id) {
+        pendentes.push(
+          `NF ${n.numero_nfe ?? "?"} - ${n.prestador_razao ?? "Sem prestador"}`,
+        );
+      }
+    }
+  } else {
+    for (const it of itensAll) {
+      if (!it.acumulador_id) {
+        const n = notaById.get(it.nota_id);
+        pendentes.push(
+          `NF ${n?.numero_nfe ?? "?"} item ${it.numero_item ?? "?"} - ${
+            it.descricao_produto ?? "Produto sem descrição"
+          } (${n?.prestador_razao ?? "Sem parceiro"})`,
+        );
+      }
     }
   }
   if (pendentes.length > 0) {
@@ -303,10 +317,11 @@ Deno.serve(async (req) => {
 
   // Geração — 1 linha por NOTA (consolidando itens), 33 campos, separador ;
   console.info(
-    `[gerar-txt-separador] Export modo ${isDocAvulso ? "documento_avulso" : "nfe"} — competencia=${competencia_id} notas=${notas.length}`,
+    `[gerar-txt-separador] Export modo ${comp.tipo} — competencia=${competencia_id} notas=${notas.length}`,
   );
   const linhas: string[] = [];
   let somaValorContabil = 0;
+
 
   for (const n of notas) {
     const itens = itensPorNota.get(n.id) ?? [];
