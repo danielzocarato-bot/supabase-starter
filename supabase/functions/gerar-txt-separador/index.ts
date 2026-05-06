@@ -325,7 +325,7 @@ Deno.serve(async (req) => {
 
   for (const n of notas) {
     const itens = itensPorNota.get(n.id) ?? [];
-    if (itens.length === 0) continue;
+    if (!semItens && itens.length === 0) continue;
 
     const cnpjPrestador = formatCnpjMask(n.prestador_cnpj ?? "");
     const razaoSocial = formatTexto(n.prestador_razao);
@@ -337,10 +337,16 @@ Deno.serve(async (req) => {
     const dataEmi = formatDateBR(n.emissao_nfe);
     const situacao = n.cancelada ? "2" : "0";
 
-    // Consolida itens: CFOP e acumulador do primeiro item; valores somados
-    const primeiro = itens[0];
-    const codAcum = String(primeiro.acumuladores?.codigo ?? "0").trim();
-    const cfop = formatInt(primeiro.cfop);
+    // Acumulador / CFOP
+    let codAcum = "0";
+    let cfop = "0";
+    if (semItens) {
+      codAcum = String((n as any).acumuladores?.codigo ?? "0").trim();
+    } else {
+      const primeiro = itens[0];
+      codAcum = String(primeiro.acumuladores?.codigo ?? "0").trim();
+      cfop = formatInt(primeiro.cfop);
+    }
 
     let sVProd = 0, sVDesc = 0;
     let sBC_ICMS = 0, sV_ICMS = 0;
@@ -376,15 +382,18 @@ Deno.serve(async (req) => {
     let vOutrasIPI = "0";
     let vIsentaIPI = "0";
 
-    // Override para documento_avulso: valor total do documento em outras_icms
-    if (isDocAvulso) {
-      const totalDoc = parseNum((n as any).valor_nfe ?? (n as any).valor_contabil ?? sVProd);
-      const totalFmt = formatValorInteiro(totalDoc);
-      valorProd = totalFmt;
+    // Override para modos sem itens (documento_avulso, nfse_tomada):
+    // valor total do documento em outras_icms
+    if (semItens) {
+      const totalBruto = parseNum((n as any).valor_nfe);
+      const desc = parseNum((n as any).desconto ?? 0);
+      const totalLiq = parseNum((n as any).valor_contabil ?? (totalBruto - desc));
+      const totalFmt = formatValorInteiro(totalLiq);
+      valorProd = formatValorInteiro(totalBruto || totalLiq);
+      valorDesc = formatValorInteiro(desc);
       valorContabil = totalFmt;
       vOutrasICMS = totalFmt;
 
-      valorDesc = "0";
       vBC_ICMS = "0";
       pICMS = "0";
       vICMS = "0";
