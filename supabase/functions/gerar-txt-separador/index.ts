@@ -144,6 +144,14 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: "Apenas escritório pode exportar." }, 403);
   }
 
+  // Defesa em profundidade: para escritório associado a um cliente específico,
+  // restringe acesso só a competências desse cliente.
+  const { data: profileFull } = await userClient
+    .from("profiles")
+    .select("role, cliente_id")
+    .eq("id", userRes.user.id)
+    .maybeSingle();
+
   // Body
   let body: any;
   try {
@@ -170,8 +178,13 @@ Deno.serve(async (req) => {
     .maybeSingle();
   if (compErr || !comp) return json({ ok: false, error: "Competência não encontrada." }, 404);
 
+  if (profileFull?.cliente_id && profileFull.cliente_id !== comp.cliente_id) {
+    return json({ ok: false, error: "Sem permissão para essa competência." }, 403);
+  }
+
   const cliente: any = (comp as any).clientes;
   if (!cliente) return json({ ok: false, error: "Cliente da competência não encontrado." }, 404);
+
 
   // 2. Status
   if (comp.status === "aberta") {

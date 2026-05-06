@@ -36,7 +36,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const loadProfile = async (uid: string) => {
     const { data, error } = await supabase.from("profiles").select("*").eq("id", uid).maybeSingle();
-    console.log("[auth] profile carregado", { uid, data, error });
+    if (import.meta.env.DEV) console.log("[auth] profile carregado", { uid, hasData: !!data, hasError: !!error });
     setProfile(data as Profile | null);
   };
 

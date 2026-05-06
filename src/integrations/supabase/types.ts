@@ -678,6 +678,10 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      excluir_competencia_cascade: {
+        Args: { _competencia_id: string }
+        Returns: undefined
+      }
       existe_escritorio: { Args: never; Returns: boolean }
       exportacoes_da_competencia: {
         Args: { _competencia_id: string }
