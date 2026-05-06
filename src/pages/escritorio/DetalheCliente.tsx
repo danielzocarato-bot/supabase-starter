@@ -1391,14 +1391,14 @@ function AbaOperacoes({ clienteId }: { clienteId: string }) {
       documento_avulso: null,
     };
     const est: Record<TipoOperacao, { ativo: boolean; layout: string; cfopPar: string }> = {
-      nfse_tomada: { ativo: false, layout: "dominio_layout_209", cfopPar: "1933_2933" },
-      nfe_entrada: { ativo: false, layout: "dominio_separador", cfopPar: "1933_2933" },
-      nfe_saida: { ativo: false, layout: "dominio_separador", cfopPar: "1933_2933" },
-      documento_avulso: { ativo: false, layout: "dominio_layout_209", cfopPar: "1933_2933" },
+      nfse_tomada: { ativo: false, layout: "dominio_layout_209", cfopPar: "1949_2949" },
+      nfe_entrada: { ativo: false, layout: "dominio_separador", cfopPar: "1949_2949" },
+      nfe_saida: { ativo: false, layout: "dominio_separador", cfopPar: "1949_2949" },
+      documento_avulso: { ativo: false, layout: "dominio_layout_209", cfopPar: "1949_2949" },
     };
     (data ?? []).forEach((r: OperacaoRow) => {
       orig[r.tipo] = r;
-      est[r.tipo] = { ativo: true, layout: r.layout_export, cfopPar: r.cfop_servico_par ?? "1933_2933" };
+      est[r.tipo] = { ativo: true, layout: r.layout_export, cfopPar: r.cfop_servico_par ?? "1949_2949" };
     });
     setOriginal(orig);
     setEstado(est);
