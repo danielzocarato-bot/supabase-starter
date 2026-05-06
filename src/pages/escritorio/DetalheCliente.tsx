@@ -1321,6 +1321,7 @@ type OperacaoRow = {
   cliente_id: string;
   tipo: TipoOperacao;
   layout_export: string;
+  cfop_servico_par?: string | null;
 };
 
 const TIPOS: {
