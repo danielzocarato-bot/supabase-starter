@@ -65,9 +65,7 @@ export default function Configuracoes() {
       form.from_name !== (config.from_name ?? "") ||
       form.endereco_completo !== (config.endereco_completo ?? "") ||
       form.telefone !== (config.telefone ?? "") ||
-      form.sieg_api_key !== (config.sieg_api_key ?? "") ||
-      form.sieg_email !== ((config as any).sieg_email ?? "") ||
-      form.sieg_password !== ((config as any).sieg_password ?? ""));
+      form.sieg_api_key !== (config.sieg_api_key ?? ""));
 
   const handleSalvar = async () => {
     if (
