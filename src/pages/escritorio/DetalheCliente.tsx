@@ -1321,6 +1321,7 @@ type OperacaoRow = {
   cliente_id: string;
   tipo: TipoOperacao;
   layout_export: string;
+  cfop_servico_par?: string | null;
 };
 
 const TIPOS: {
@@ -1364,11 +1365,11 @@ function AbaOperacoes({ clienteId }: { clienteId: string }) {
     nfe_saida: null,
     documento_avulso: null,
   });
-  const [estado, setEstado] = useState<Record<TipoOperacao, { ativo: boolean; layout: string }>>({
-    nfse_tomada: { ativo: false, layout: "dominio_leiaute_18" },
-    nfe_entrada: { ativo: false, layout: "dominio_separador" },
-    nfe_saida: { ativo: false, layout: "dominio_separador" },
-    documento_avulso: { ativo: false, layout: "dominio_layout_209" },
+  const [estado, setEstado] = useState<Record<TipoOperacao, { ativo: boolean; layout: string; cfopPar: string }>>({
+    nfse_tomada: { ativo: false, layout: "dominio_leiaute_18", cfopPar: "1933_2933" },
+    nfe_entrada: { ativo: false, layout: "dominio_separador", cfopPar: "1933_2933" },
+    nfe_saida: { ativo: false, layout: "dominio_separador", cfopPar: "1933_2933" },
+    documento_avulso: { ativo: false, layout: "dominio_layout_209", cfopPar: "1933_2933" },
   });
   const [bloqueio, setBloqueio] = useState<{ tipo: TipoOperacao; titulo: string } | null>(null);
 
@@ -1376,7 +1377,7 @@ function AbaOperacoes({ clienteId }: { clienteId: string }) {
     setLoading(true);
     const { data, error } = await (supabase as any)
       .from("cliente_operacoes")
-      .select("cliente_id, tipo, layout_export")
+      .select("cliente_id, tipo, layout_export, cfop_servico_par")
       .eq("cliente_id", clienteId);
     if (error) {
       toast.error("Algo precisa de atenção", { description: error.message });
@@ -1389,15 +1390,15 @@ function AbaOperacoes({ clienteId }: { clienteId: string }) {
       nfe_saida: null,
       documento_avulso: null,
     };
-    const est = {
-      nfse_tomada: { ativo: false, layout: "dominio_leiaute_18" },
-      nfe_entrada: { ativo: false, layout: "dominio_separador" },
-      nfe_saida: { ativo: false, layout: "dominio_separador" },
-      documento_avulso: { ativo: false, layout: "dominio_layout_209" },
+    const est: Record<TipoOperacao, { ativo: boolean; layout: string; cfopPar: string }> = {
+      nfse_tomada: { ativo: false, layout: "dominio_leiaute_18", cfopPar: "1933_2933" },
+      nfe_entrada: { ativo: false, layout: "dominio_separador", cfopPar: "1933_2933" },
+      nfe_saida: { ativo: false, layout: "dominio_separador", cfopPar: "1933_2933" },
+      documento_avulso: { ativo: false, layout: "dominio_layout_209", cfopPar: "1933_2933" },
     };
     (data ?? []).forEach((r: OperacaoRow) => {
       orig[r.tipo] = r;
-      est[r.tipo] = { ativo: true, layout: r.layout_export };
+      est[r.tipo] = { ativo: true, layout: r.layout_export, cfopPar: r.cfop_servico_par ?? "1933_2933" };
     });
     setOriginal(orig);
     setEstado(est);
@@ -1413,6 +1414,7 @@ function AbaOperacoes({ clienteId }: { clienteId: string }) {
       const eraAtivo = !!o;
       if (eraAtivo !== e.ativo) return true;
       if (eraAtivo && o!.layout_export !== e.layout) return true;
+      if (eraAtivo && t.key === "nfse_tomada" && (o!.cfop_servico_par ?? "1933_2933") !== e.cfopPar) return true;
       return false;
     });
   }, [original, estado]);
@@ -1449,10 +1451,16 @@ function AbaOperacoes({ clienteId }: { clienteId: string }) {
         const o = original[t.key];
         const e = estado[t.key];
         const eraAtivo = !!o;
+        const payloadInsert: any = { cliente_id: clienteId, tipo: t.key, layout_export: e.layout };
+        const payloadUpdate: any = { layout_export: e.layout };
+        if (t.key === "nfse_tomada") {
+          payloadInsert.cfop_servico_par = e.cfopPar;
+          payloadUpdate.cfop_servico_par = e.cfopPar;
+        }
         if (e.ativo && !eraAtivo) {
           const { error } = await (supabase as any)
             .from("cliente_operacoes")
-            .insert({ cliente_id: clienteId, tipo: t.key, layout_export: e.layout });
+            .insert(payloadInsert);
           if (error) throw error;
         } else if (!e.ativo && eraAtivo) {
           const { error } = await (supabase as any)
@@ -1461,10 +1469,15 @@ function AbaOperacoes({ clienteId }: { clienteId: string }) {
             .eq("cliente_id", clienteId)
             .eq("tipo", t.key);
           if (error) throw error;
-        } else if (e.ativo && eraAtivo && o!.layout_export !== e.layout) {
+        } else if (
+          e.ativo && eraAtivo && (
+            o!.layout_export !== e.layout ||
+            (t.key === "nfse_tomada" && (o!.cfop_servico_par ?? "1933_2933") !== e.cfopPar)
+          )
+        ) {
           const { error } = await (supabase as any)
             .from("cliente_operacoes")
-            .update({ layout_export: e.layout })
+            .update(payloadUpdate)
             .eq("cliente_id", clienteId)
             .eq("tipo", t.key);
           if (error) throw error;
@@ -1520,10 +1533,28 @@ function AbaOperacoes({ clienteId }: { clienteId: string }) {
                       onChange={(ev) => handleLayout(t.key, ev.target.value)}
                       className="flex h-10 w-full max-w-md rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                     >
-                      {t.layouts.map(l => (
+                    {t.layouts.map(l => (
                         <option key={l.value} value={l.value}>{l.label}</option>
                       ))}
                     </select>
+                    {t.key === "nfse_tomada" && (
+                      <div className="space-y-2 pt-3">
+                        <Label className="text-xs text-muted-foreground">Par de CFOP (serviço tomado)</Label>
+                        <select
+                          value={e.cfopPar}
+                          onChange={(ev) =>
+                            setEstado(prev => ({ ...prev, [t.key]: { ...prev[t.key], cfopPar: ev.target.value } }))
+                          }
+                          className="flex h-10 w-full max-w-md rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                        >
+                          <option value="1933_2933">1933 (mesma UF) / 2933 (outra UF)</option>
+                          <option value="1949_2949">1949 (mesma UF) / 2949 (outra UF)</option>
+                        </select>
+                        <p className="text-xs text-muted-foreground">
+                          Usado na exportação do TXT quando o documento não traz CFOP. O sistema escolhe entre os dois conforme a UF do prestador vs. a UF do cliente.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

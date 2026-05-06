@@ -197,7 +197,7 @@ Deno.serve(async (req) => {
   // 4. cliente_operacoes — layout configurado
   const { data: op, error: opErr } = await admin
     .from("cliente_operacoes")
-    .select("layout_export, ativo")
+    .select("layout_export, ativo, cfop_servico_par")
     .eq("cliente_id", cliente.id)
     .eq("tipo", comp.tipo)
     .maybeSingle();
@@ -346,6 +346,10 @@ Deno.serve(async (req) => {
     if (semItens) {
       codAcum = String((n as any).acumuladores?.codigo ?? "0").trim();
 
+      // Par de CFOP configurado no cliente (default 1933/2933)
+      const par = ((op as any)?.cfop_servico_par ?? "1933_2933").toString();
+      const [cfopDentro, cfopFora] = par === "1949_2949" ? ["1949", "2949"] : ["1933", "2933"];
+
       // CFOP modo semItens:
       // 1) tenta CFOP do primeiro item (documento_avulso geralmente tem)
       const cfopItem = itens.length > 0 ? (itens[0].cfop ?? "").toString().trim() : "";
@@ -353,18 +357,17 @@ Deno.serve(async (req) => {
         cfop = formatInt(cfopItem);
         console.info(`[gerar-txt-separador] CFOP via item: ${cfop} (nota ${n.numero_nfe ?? "?"})`);
       } else {
-        // 2) calcula por UF (prestador vs cliente)
+        // 2) calcula por UF (prestador vs cliente) usando o par configurado
         const ufPrest = (n.prestador_uf ?? "").toString().trim().toUpperCase();
-        const ufCli = (clienteUf ?? "").toString().trim().toUpperCase();
-        if (!ufPrest || !ufCli) {
-          cfop = "1949";
+        if (!ufPrest || !clienteUf) {
+          cfop = cfopDentro;
           console.warn(
-            `[gerar-txt-separador] CFOP fallback 1949 (UF ausente, nota ${n.numero_nfe ?? "?"})`,
+            `[gerar-txt-separador] CFOP fallback ${cfopDentro} (UF ausente, nota ${n.numero_nfe ?? "?"})`,
           );
         } else {
-          cfop = ufPrest === ufCli ? "1949" : "2949";
+          cfop = ufPrest === clienteUf ? cfopDentro : cfopFora;
           console.info(
-            `[gerar-txt-separador] CFOP via UF: ${cfop} (prestador=${ufPrest}, cliente=${ufCli}, nota ${n.numero_nfe ?? "?"})`,
+            `[gerar-txt-separador] CFOP via UF: ${cfop} (par=${par}, prestador=${ufPrest}, cliente=${clienteUf}, nota ${n.numero_nfe ?? "?"})`,
           );
         }
       }

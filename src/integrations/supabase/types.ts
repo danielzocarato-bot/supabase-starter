@@ -52,6 +52,7 @@ export type Database = {
       cliente_operacoes: {
         Row: {
           ativo: boolean | null
+          cfop_servico_par: string
           cliente_id: string
           created_at: string | null
           layout_export: string
@@ -59,6 +60,7 @@ export type Database = {
         }
         Insert: {
           ativo?: boolean | null
+          cfop_servico_par?: string
           cliente_id: string
           created_at?: string | null
           layout_export: string
@@ -66,6 +68,7 @@ export type Database = {
         }
         Update: {
           ativo?: boolean | null
+          cfop_servico_par?: string
           cliente_id?: string
           created_at?: string | null
           layout_export?: string
