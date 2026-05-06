@@ -164,7 +164,7 @@ Deno.serve(async (req) => {
   const { data: comp, error: compErr } = await admin
     .from("competencias")
     .select(
-      "id, periodo, status, tipo, cliente_id, clientes:cliente_id ( id, cnpj, razao_social )",
+      "id, periodo, status, tipo, cliente_id, clientes:cliente_id ( id, cnpj, razao_social, uf )",
     )
     .eq("id", competencia_id)
     .maybeSingle();
