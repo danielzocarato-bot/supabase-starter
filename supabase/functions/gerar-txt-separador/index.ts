@@ -224,7 +224,7 @@ Deno.serve(async (req) => {
   let notasQuery = admin
     .from("notas_fiscais")
     .select(
-      "id, numero_nfe, chave_nfe, emissao_nfe, prestador_cnpj, prestador_razao, prestador_uf, prestador_municipio, prestador_endereco, raw_data, tipo_operacao_nfe, tipo_documento, cancelada",
+      "id, numero_nfe, chave_nfe, emissao_nfe, prestador_cnpj, prestador_razao, prestador_uf, prestador_municipio, prestador_endereco, raw_data, tipo_operacao_nfe, tipo_documento, cancelada, valor_nfe, valor_contabil",
     )
     .eq("competencia_id", competencia_id)
     .eq("cancelada", false);
