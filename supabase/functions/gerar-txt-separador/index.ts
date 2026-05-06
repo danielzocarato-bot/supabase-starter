@@ -174,7 +174,8 @@ Deno.serve(async (req) => {
   }
 
   // 3. Tipo
-  if (comp.tipo !== "nfe_entrada" && comp.tipo !== "nfe_saida") {
+  const tiposSuportados = ["nfe_entrada", "nfe_saida", "documento_avulso"];
+  if (!tiposSuportados.includes(comp.tipo as string)) {
     return json(
       {
         ok: false,
@@ -184,6 +185,7 @@ Deno.serve(async (req) => {
       400,
     );
   }
+  const isDocAvulso = comp.tipo === "documento_avulso";
 
   // 4. cliente_operacoes — layout configurado
   const { data: op, error: opErr } = await admin
@@ -201,11 +203,12 @@ Deno.serve(async (req) => {
       400,
     );
   }
-  if (op.layout_export !== "dominio_separador") {
+  const layoutEsperado = isDocAvulso ? "dominio_layout_209" : "dominio_separador";
+  if (op.layout_export !== layoutEsperado) {
     return json(
       {
         ok: false,
-        error: `Layout de exportação configurado é "${op.layout_export}", esperado "dominio_separador".`,
+        error: `Layout de exportação configurado é "${op.layout_export}", esperado "${layoutEsperado}".`,
       },
       400,
     );
@@ -218,19 +221,23 @@ Deno.serve(async (req) => {
   }
 
   // Notas
-  const { data: notas, error: notasErr } = await admin
+  let notasQuery = admin
     .from("notas_fiscais")
     .select(
-      "id, numero_nfe, chave_nfe, emissao_nfe, prestador_cnpj, prestador_razao, prestador_uf, prestador_municipio, prestador_endereco, raw_data, tipo_operacao_nfe, cancelada",
+      "id, numero_nfe, chave_nfe, emissao_nfe, prestador_cnpj, prestador_razao, prestador_uf, prestador_municipio, prestador_endereco, raw_data, tipo_operacao_nfe, tipo_documento, cancelada",
     )
     .eq("competencia_id", competencia_id)
-    .eq("cancelada", false)
-    .eq("tipo_documento", "nfe")
-    .order("emissao_nfe", { ascending: true });
+    .eq("cancelada", false);
+  if (isDocAvulso) {
+    notasQuery = notasQuery.in("tipo_documento", ["boleto", "fatura", "apolice"]);
+  } else {
+    notasQuery = notasQuery.eq("tipo_documento", "nfe");
+  }
+  const { data: notas, error: notasErr } = await notasQuery.order("emissao_nfe", { ascending: true });
   if (notasErr) return json({ ok: false, error: `Falha ao carregar notas: ${notasErr.message}` }, 500);
 
   if (!notas || notas.length === 0) {
-    return json({ ok: false, error: "Não há notas NFe para exportar nesta competência." }, 400);
+    return json({ ok: false, error: "Não há documentos para exportar nesta competência." }, 400);
   }
 
   const notaIds = notas.map((n) => n.id);
@@ -378,9 +385,8 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: `Falha ao atualizar status: ${updErr.message}` }, 500);
   }
 
-  const isEntrada = comp.tipo === "nfe_entrada";
-  const tipoSuffix = isEntrada ? "entrada" : "saida";
-  const filename = `dominio_nfe_${cnpjEmpresa}_${comp.periodo}_${tipoSuffix}.txt`;
+  const tipoSuffix = isDocAvulso ? "avulso" : (comp.tipo === "nfe_entrada" ? "entrada" : "saida");
+  const filename = `dominio_${isDocAvulso ? "209" : "nfe"}_${cnpjEmpresa}_${comp.periodo}_${tipoSuffix}.txt`;
 
   // Auditoria — registra exportação (não bloqueia em caso de falha)
   try {
@@ -398,7 +404,7 @@ Deno.serve(async (req) => {
       gerado_por_email: userProfile?.email,
       gerado_por_nome: userProfile?.nome,
       arquivo_nome: filename,
-      formato: "dominio_separador",
+      formato: isDocAvulso ? "dominio_layout_209" : "dominio_separador",
       total_notas: notas?.length ?? 0,
       total_itens: linhas.length,
       bytes_size: bytes.length,
