@@ -422,6 +422,7 @@ Deno.serve(async (req) => {
 
   const url = new URL(req.url);
   const isTest = url.searchParams.get("test") === "true";
+  const enrichFlag = url.searchParams.get("enrich") === "true";
 
   let form: FormData;
   try {
@@ -475,6 +476,9 @@ Deno.serve(async (req) => {
         ? String(form.get("periodo")).trim()
         : new Date().toISOString().slice(0, 7);
     const ufClienteTest = normalizeUF(form.get("uf_cliente"));
+    if (enrichFlag) {
+      await enriquecerComBrasilAPI(ai.data);
+    }
     const norm = normalizar(categoria, ai.data, ufClienteTest, periodoTest);
     return json({
       ok: true,
