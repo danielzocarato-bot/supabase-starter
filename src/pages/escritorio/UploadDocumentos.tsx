@@ -526,16 +526,51 @@ export default function UploadDocumentos() {
         {/* SEÇÃO C — LISTA / EXTRAÇÕES */}
         {docs.length > 0 && (
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
               <h2 className="text-lg font-semibold">Documentos ({docs.length})</h2>
-              <Button
-                onClick={processarTodos}
-                disabled={batchRunning || !contextoOk || docs.every((d) => d.status === "extraido")}
-                className="bg-brand text-brand-foreground hover:bg-brand/90"
-              >
-                {batchRunning && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                Processar todos
-              </Button>
+              <div className="flex items-center gap-2">
+                <Select
+                  onValueChange={(v) => {
+                    const cat = v as Categoria;
+                    setDocs((prev) =>
+                      prev.map((d) =>
+                        d.status === "extraido" || d.status === "processando"
+                          ? d
+                          : { ...d, categoria: cat },
+                      ),
+                    );
+                    const alvos = docs.filter(
+                      (d) => d.status !== "extraido" && d.status !== "processando",
+                    ).length;
+                    toast.success(
+                      `${alvos} documento(s) categorizado(s) como ${CATEGORIA_LABEL[cat]}`,
+                    );
+                  }}
+                  disabled={
+                    batchRunning ||
+                    docs.every((d) => d.status === "extraido" || d.status === "processando")
+                  }
+                >
+                  <SelectTrigger className="w-[200px]">
+                    <SelectValue placeholder="Categorizar em lote" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(["boleto", "fatura", "apolice"] as Categoria[]).map((c) => (
+                      <SelectItem key={c} value={c}>
+                        {CATEGORIA_LABEL[c]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  onClick={processarTodos}
+                  disabled={batchRunning || !contextoOk || docs.every((d) => d.status === "extraido")}
+                  className="bg-brand text-brand-foreground hover:bg-brand/90"
+                >
+                  {batchRunning && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                  Processar todos
+                </Button>
+              </div>
             </div>
 
             {docs.map((d) => (
