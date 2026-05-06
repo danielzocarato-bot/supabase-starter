@@ -180,18 +180,17 @@ Deno.serve(async (req) => {
   }
 
   // 3. Tipo
-  const tiposSuportados = ["nfe_entrada", "nfe_saida", "documento_avulso"];
+  const tiposSuportados = ["nfe_entrada", "nfe_saida", "documento_avulso", "nfse_tomada"];
   if (!tiposSuportados.includes(comp.tipo as string)) {
     return json(
-      {
-        ok: false,
-        error:
-          "Esta competência usa o leiaute Domínio 18 (NFSe). Use a função correspondente.",
-      },
+      { ok: false, error: "Tipo de competência não suportado por esta exportação." },
       400,
     );
   }
   const isDocAvulso = comp.tipo === "documento_avulso";
+  const isNfseTomada = comp.tipo === "nfse_tomada";
+  // Modos sem itens (1 linha por nota usando totais da nota)
+  const semItens = isDocAvulso || isNfseTomada;
 
   // 4. cliente_operacoes — layout configurado
   const { data: op, error: opErr } = await admin
@@ -209,7 +208,7 @@ Deno.serve(async (req) => {
       400,
     );
   }
-  const layoutEsperado = isDocAvulso ? "dominio_layout_209" : "dominio_separador";
+  const layoutEsperado = semItens ? "dominio_layout_209" : "dominio_separador";
   if (op.layout_export !== layoutEsperado) {
     return json(
       {
@@ -230,12 +229,14 @@ Deno.serve(async (req) => {
   let notasQuery = admin
     .from("notas_fiscais")
     .select(
-      "id, numero_nfe, chave_nfe, emissao_nfe, prestador_cnpj, prestador_razao, prestador_uf, prestador_municipio, prestador_endereco, raw_data, tipo_operacao_nfe, tipo_documento, cancelada, valor_nfe, valor_contabil",
+      "id, numero_nfe, chave_nfe, emissao_nfe, prestador_cnpj, prestador_razao, prestador_uf, prestador_municipio, prestador_endereco, raw_data, tipo_operacao_nfe, tipo_documento, cancelada, valor_nfe, valor_contabil, desconto, acumulador_id, acumuladores:acumulador_id ( codigo )",
     )
     .eq("competencia_id", competencia_id)
     .eq("cancelada", false);
   if (isDocAvulso) {
     notasQuery = notasQuery.in("tipo_documento", ["boleto", "fatura", "apolice"]);
+  } else if (isNfseTomada) {
+    notasQuery = notasQuery.eq("tipo_documento", "nfse");
   } else {
     notasQuery = notasQuery.eq("tipo_documento", "nfe");
   }
@@ -248,22 +249,24 @@ Deno.serve(async (req) => {
 
   const notaIds = notas.map((n) => n.id);
 
-  // Itens (paginado)
+  // Itens (apenas para modos com itens)
   const itensAll: any[] = [];
-  const CHUNK = 100;
-  for (let i = 0; i < notaIds.length; i += CHUNK) {
-    const slice = notaIds.slice(i, i + CHUNK);
-    const { data: itens, error: itensErr } = await admin
-      .from("notas_fiscais_itens")
-      .select(
-        "id, nota_id, numero_item, codigo_produto, descricao_produto, ncm, cfop, valor, raw_data, acumulador_id, acumuladores:acumulador_id ( codigo )",
-      )
-      .in("nota_id", slice)
-      .order("numero_item", { ascending: true });
-    if (itensErr) {
-      return json({ ok: false, error: `Falha ao carregar itens: ${itensErr.message}` }, 500);
+  if (!semItens) {
+    const CHUNK = 100;
+    for (let i = 0; i < notaIds.length; i += CHUNK) {
+      const slice = notaIds.slice(i, i + CHUNK);
+      const { data: itens, error: itensErr } = await admin
+        .from("notas_fiscais_itens")
+        .select(
+          "id, nota_id, numero_item, codigo_produto, descricao_produto, ncm, cfop, valor, raw_data, acumulador_id, acumuladores:acumulador_id ( codigo )",
+        )
+        .in("nota_id", slice)
+        .order("numero_item", { ascending: true });
+      if (itensErr) {
+        return json({ ok: false, error: `Falha ao carregar itens: ${itensErr.message}` }, 500);
+      }
+      if (itens) itensAll.push(...itens);
     }
-    if (itens) itensAll.push(...itens);
   }
 
   // Index notas por id
@@ -272,14 +275,24 @@ Deno.serve(async (req) => {
 
   // Pendências de classificação
   const pendentes: string[] = [];
-  for (const it of itensAll) {
-    if (!it.acumulador_id) {
-      const n = notaById.get(it.nota_id);
-      pendentes.push(
-        `NF ${n?.numero_nfe ?? "?"} item ${it.numero_item ?? "?"} - ${
-          it.descricao_produto ?? "Produto sem descrição"
-        } (${n?.prestador_razao ?? "Sem parceiro"})`,
-      );
+  if (semItens) {
+    for (const n of notas) {
+      if (!n.acumulador_id) {
+        pendentes.push(
+          `NF ${n.numero_nfe ?? "?"} - ${n.prestador_razao ?? "Sem prestador"}`,
+        );
+      }
+    }
+  } else {
+    for (const it of itensAll) {
+      if (!it.acumulador_id) {
+        const n = notaById.get(it.nota_id);
+        pendentes.push(
+          `NF ${n?.numero_nfe ?? "?"} item ${it.numero_item ?? "?"} - ${
+            it.descricao_produto ?? "Produto sem descrição"
+          } (${n?.prestador_razao ?? "Sem parceiro"})`,
+        );
+      }
     }
   }
   if (pendentes.length > 0) {
@@ -304,14 +317,15 @@ Deno.serve(async (req) => {
 
   // Geração — 1 linha por NOTA (consolidando itens), 33 campos, separador ;
   console.info(
-    `[gerar-txt-separador] Export modo ${isDocAvulso ? "documento_avulso" : "nfe"} — competencia=${competencia_id} notas=${notas.length}`,
+    `[gerar-txt-separador] Export modo ${comp.tipo} — competencia=${competencia_id} notas=${notas.length}`,
   );
   const linhas: string[] = [];
   let somaValorContabil = 0;
 
+
   for (const n of notas) {
     const itens = itensPorNota.get(n.id) ?? [];
-    if (itens.length === 0) continue;
+    if (!semItens && itens.length === 0) continue;
 
     const cnpjPrestador = formatCnpjMask(n.prestador_cnpj ?? "");
     const razaoSocial = formatTexto(n.prestador_razao);
@@ -323,10 +337,16 @@ Deno.serve(async (req) => {
     const dataEmi = formatDateBR(n.emissao_nfe);
     const situacao = n.cancelada ? "2" : "0";
 
-    // Consolida itens: CFOP e acumulador do primeiro item; valores somados
-    const primeiro = itens[0];
-    const codAcum = String(primeiro.acumuladores?.codigo ?? "0").trim();
-    const cfop = formatInt(primeiro.cfop);
+    // Acumulador / CFOP
+    let codAcum = "0";
+    let cfop = "0";
+    if (semItens) {
+      codAcum = String((n as any).acumuladores?.codigo ?? "0").trim();
+    } else {
+      const primeiro = itens[0];
+      codAcum = String(primeiro.acumuladores?.codigo ?? "0").trim();
+      cfop = formatInt(primeiro.cfop);
+    }
 
     let sVProd = 0, sVDesc = 0;
     let sBC_ICMS = 0, sV_ICMS = 0;
@@ -362,15 +382,18 @@ Deno.serve(async (req) => {
     let vOutrasIPI = "0";
     let vIsentaIPI = "0";
 
-    // Override para documento_avulso: valor total do documento em outras_icms
-    if (isDocAvulso) {
-      const totalDoc = parseNum((n as any).valor_nfe ?? (n as any).valor_contabil ?? sVProd);
-      const totalFmt = formatValorInteiro(totalDoc);
-      valorProd = totalFmt;
+    // Override para modos sem itens (documento_avulso, nfse_tomada):
+    // valor total do documento em outras_icms
+    if (semItens) {
+      const totalBruto = parseNum((n as any).valor_nfe);
+      const desc = parseNum((n as any).desconto ?? 0);
+      const totalLiq = parseNum((n as any).valor_contabil ?? (totalBruto - desc));
+      const totalFmt = formatValorInteiro(totalLiq);
+      valorProd = formatValorInteiro(totalBruto || totalLiq);
+      valorDesc = formatValorInteiro(desc);
       valorContabil = totalFmt;
       vOutrasICMS = totalFmt;
 
-      valorDesc = "0";
       vBC_ICMS = "0";
       pICMS = "0";
       vICMS = "0";
@@ -441,8 +464,13 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: `Falha ao atualizar status: ${updErr.message}` }, 500);
   }
 
-  const tipoSuffix = isDocAvulso ? "avulso" : (comp.tipo === "nfe_entrada" ? "entrada" : "saida");
-  const filename = `dominio_${isDocAvulso ? "209" : "nfe"}_${cnpjEmpresa}_${comp.periodo}_${tipoSuffix}.txt`;
+  const tipoSuffix = isDocAvulso
+    ? "avulso"
+    : isNfseTomada
+    ? "nfse_tomada"
+    : (comp.tipo === "nfe_entrada" ? "entrada" : "saida");
+  const filenamePrefix = semItens ? "dominio_209" : "dominio_nfe";
+  const filename = `${filenamePrefix}_${cnpjEmpresa}_${comp.periodo}_${tipoSuffix}.txt`;
 
   // Auditoria — registra exportação (não bloqueia em caso de falha)
   try {
@@ -460,7 +488,7 @@ Deno.serve(async (req) => {
       gerado_por_email: userProfile?.email,
       gerado_por_nome: userProfile?.nome,
       arquivo_nome: filename,
-      formato: isDocAvulso ? "dominio_layout_209" : "dominio_separador",
+      formato: semItens ? "dominio_layout_209" : "dominio_separador",
       total_notas: notas?.length ?? 0,
       total_itens: linhas.length,
       bytes_size: bytes.length,

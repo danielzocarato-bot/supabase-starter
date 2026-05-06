@@ -592,7 +592,7 @@ export default function ClassificacaoNFSe() {
         toast.error("Algo precisa de atenção", { description: "Sessão expirada." });
         return;
       }
-      const res = await fetch(`${SUPABASE_URL}/functions/v1/gerar-txt-dominio`, {
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/gerar-txt-separador`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
