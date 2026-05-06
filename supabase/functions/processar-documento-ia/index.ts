@@ -238,6 +238,7 @@ async function extrairComIA(
         ],
         response_format: { type: "json_object" },
         temperature: 0.1,
+        max_tokens: 4096,
       }),
     },
   );
@@ -294,23 +295,49 @@ function extractJSON(raw: string): any {
   const isArr = arrStart !== -1 && (objStart === -1 || arrStart < objStart);
   const start = isArr ? arrStart : objStart;
   const end = isArr ? s.lastIndexOf("]") : s.lastIndexOf("}");
-  if (start !== -1 && end > start) {
-    const slice = s.slice(start, end + 1);
-    try { return JSON.parse(slice); } catch {}
-    // Attempt to repair truncated JSON: strip trailing partial property and close braces
-    let repaired = slice.replace(/,\s*"[^"]*"\s*:\s*"[^"]*$/g, "");
-    repaired = repaired.replace(/,\s*"[^"]*"\s*:\s*$/g, "");
-    repaired = repaired.replace(/,\s*$/g, "");
-    // Balance braces/brackets
-    const opensO = (repaired.match(/\{/g) || []).length;
-    const closesO = (repaired.match(/\}/g) || []).length;
-    const opensA = (repaired.match(/\[/g) || []).length;
-    const closesA = (repaired.match(/\]/g) || []).length;
-    repaired += "]".repeat(Math.max(0, opensA - closesA));
-    repaired += "}".repeat(Math.max(0, opensO - closesO));
-    return JSON.parse(repaired);
+  let slice = start !== -1 && end > start ? s.slice(start, end + 1) : s.slice(start === -1 ? 0 : start);
+  if (start === -1) throw new Error("no JSON structure");
+  try { return JSON.parse(slice); } catch {}
+
+  // Repair truncated JSON (response cut mid-string/property)
+  let repaired = slice;
+  // Count quotes outside escapes to detect unterminated string
+  let inStr = false;
+  let esc = false;
+  let lastSafeIdx = -1; // index of last char that left us outside a string with balanced state
+  let depthO = 0, depthA = 0;
+  for (let i = 0; i < repaired.length; i++) {
+    const c = repaired[i];
+    if (esc) { esc = false; continue; }
+    if (c === "\\") { esc = true; continue; }
+    if (c === '"') { inStr = !inStr; continue; }
+    if (inStr) continue;
+    if (c === "{") depthO++;
+    else if (c === "}") depthO--;
+    else if (c === "[") depthA++;
+    else if (c === "]") depthA--;
+    if (c === "," || c === "}" || c === "]") lastSafeIdx = i;
   }
-  throw new Error("no JSON structure");
+  if (inStr || lastSafeIdx > 0) {
+    // Truncate to last safe boundary, drop trailing comma
+    repaired = repaired.slice(0, lastSafeIdx + 1).replace(/,\s*$/, "");
+    // Recount depth
+    inStr = false; esc = false; depthO = 0; depthA = 0;
+    for (let i = 0; i < repaired.length; i++) {
+      const c = repaired[i];
+      if (esc) { esc = false; continue; }
+      if (c === "\\") { esc = true; continue; }
+      if (c === '"') { inStr = !inStr; continue; }
+      if (inStr) continue;
+      if (c === "{") depthO++;
+      else if (c === "}") depthO--;
+      else if (c === "[") depthA++;
+      else if (c === "]") depthA--;
+    }
+  }
+  repaired += "]".repeat(Math.max(0, depthA));
+  repaired += "}".repeat(Math.max(0, depthO));
+  return JSON.parse(repaired);
 }
 
 function normalizar(
