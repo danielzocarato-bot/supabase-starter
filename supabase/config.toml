@@ -21,3 +21,6 @@ project_id = "cicyhmnvoqggdpvpyobi"
 
   [functions.processar-documento-ia]
     verify_jwt = false
+
+  [functions.reenriquecer-prestadores]
+    verify_jwt = true
