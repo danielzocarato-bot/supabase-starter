@@ -1537,7 +1537,7 @@ function AbaOperacoes({ clienteId }: { clienteId: string }) {
                         <option key={l.value} value={l.value}>{l.label}</option>
                       ))}
                     </select>
-                    {t.key === "nfse_tomada" && (
+                    {(t.key === "nfse_tomada" || t.key === "documento_avulso") && (
                       <div className="space-y-2 pt-3">
                         <Label className="text-xs text-muted-foreground">Par de CFOP (serviço tomado)</Label>
                         <select
