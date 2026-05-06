@@ -54,6 +54,12 @@ function formatDecimalBR(v: any, casas = 2): string {
   return n.toFixed(casas).replace(".", ",");
 }
 
+// Layout macro Excel: valores monetários como inteiro truncado (sem casas decimais, sem separador)
+function formatValorInteiro(v: any): string {
+  const n = parseNum(v);
+  return String(Math.trunc(n));
+}
+
 function formatInt(v: any): string {
   if (v == null || v === "") return "0";
   if (typeof v === "number") return Number.isFinite(v) ? String(Math.trunc(v)) : "0";
