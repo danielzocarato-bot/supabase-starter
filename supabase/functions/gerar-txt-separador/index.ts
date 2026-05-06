@@ -208,7 +208,7 @@ Deno.serve(async (req) => {
       400,
     );
   }
-  const layoutEsperado = isDocAvulso ? "dominio_layout_209" : "dominio_separador";
+  const layoutEsperado = semItens ? "dominio_layout_209" : "dominio_separador";
   if (op.layout_export !== layoutEsperado) {
     return json(
       {
