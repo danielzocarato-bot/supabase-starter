@@ -55,6 +55,16 @@ function bytesToBase64(bytes: Uint8Array): string {
   return btoa(bin);
 }
 
+function normalizeUF(v: unknown): string | null {
+  if (v == null) return null;
+  const s = String(v).trim().toUpperCase();
+  return /^[A-Z]{2}$/.test(s) ? s : null;
+}
+
+function primeiroDiaCompetencia(periodo: string): string {
+  return `${periodo}-01`;
+}
+
 const SYSTEM_PROMPT =
   `Você é um assistente especialista em extrair dados estruturados de documentos brasileiros (boletos, faturas e apólices de seguro) para lançamento contábil. Extraia APENAS o que estiver visivelmente presente no documento. Se um campo não estiver claramente presente, retorne null. Não invente valores.`;
 
@@ -71,7 +81,6 @@ Campos a extrair:
 - data_vencimento (string AAAA-MM-DD): data de vencimento
 - valor (number): valor do boleto (se houver desconto, use o valor final a pagar)
 - descricao (string): linha "histórico" ou descrição da cobrança, se houver. Se não, monte algo como "Boleto - Pagamento referente a [número/serviço]"
-- cfop (string, 4 dígitos): se aparecer no documento, senão null
 Retorne JSON puro, sem markdown.`,
   fatura: `Esta é uma FATURA (energia, telefone, internet, etc — NÃO é nota fiscal eletrônica). Extraia os campos abaixo.
 Campos a extrair:
@@ -85,7 +94,6 @@ Campos a extrair:
 - descricao (string): tipo de serviço (ex: "Conta de energia elétrica - Mês de referência 03/2026")
 - valor_icms (number): se aparecer ICMS no documento, valor; senão null
 - aliquota_icms (number): alíquota ICMS se aparecer
-- cfop (string): se aparecer
 - valor_pis, valor_cofins (number): se aparecerem
 Retorne JSON puro, sem markdown.`,
   apolice: `Esta é uma APÓLICE DE SEGURO. Extraia os campos abaixo.
@@ -177,25 +185,75 @@ async function extrairComIA(
   }
 }
 
-function normalizar(categoria: string, extraido: any) {
+function normalizar(
+  categoria: string,
+  extraido: any,
+  ufCliente: string | null,
+  periodo: string,
+) {
   const cnpj = extraido.cnpj_beneficiario ?? extraido.cnpj_emitente ??
     extraido.cnpj_seguradora ?? null;
   const razao = extraido.razao_beneficiario ?? extraido.razao_emitente ??
     extraido.razao_seguradora ?? null;
-  const uf = extraido.uf_beneficiario ?? extraido.uf_emitente ??
-    extraido.uf_seguradora ?? null;
+  const uf = normalizeUF(
+    extraido.uf_beneficiario ?? extraido.uf_emitente ?? extraido.uf_seguradora,
+  );
   const municipio = extraido.municipio_beneficiario ??
     extraido.municipio_emitente ?? extraido.municipio_seguradora ?? null;
   const endereco = extraido.endereco_beneficiario ??
     extraido.endereco_emitente ?? extraido.endereco_seguradora ?? null;
   const numero = extraido.numero_documento ?? extraido.numero_apolice ?? null;
-  const dataEmissao = extraido.data_emissao ?? null;
   const dataVencimento = extraido.data_vencimento ??
     extraido.data_fim_vigencia ?? null;
   const valor = Number(extraido.valor ?? extraido.valor_premio ?? 0) || 0;
   const descricao = extraido.descricao ??
     `${categoria.toUpperCase()} - ${numero ?? "sem número"}`;
-  const cfop = extraido.cfop ?? "1933";
+
+  // CFOP: decidido por código com base nas UFs.
+  let cfop: string;
+  if (!uf) {
+    console.warn(
+      "[processar-documento-ia] UF do prestador desconhecida, fallback para CFOP 1949",
+      { cnpj_prestador: cnpj },
+    );
+    cfop = "1949";
+  } else if (ufCliente && uf === ufCliente) {
+    cfop = "1949";
+  } else if (ufCliente && uf !== ufCliente) {
+    cfop = "2949";
+  } else {
+    // ufCliente desconhecida — assume mesma UF
+    console.warn(
+      "[processar-documento-ia] UF do cliente desconhecida, assumindo CFOP 1949",
+      { cnpj_prestador: cnpj },
+    );
+    cfop = "1949";
+  }
+
+  // Datas: aplicar regra de competência.
+  const primeiroDia = primeiroDiaCompetencia(periodo);
+  const dataEmissaoOriginal = extraido.data_emissao ?? null;
+  let dataEmissao: string;
+  let dataLancamento: string;
+  if (!dataEmissaoOriginal) {
+    dataEmissao = primeiroDia;
+    dataLancamento = primeiroDia;
+    console.info(
+      "[processar-documento-ia] data_emissao ausente, forçando para primeiro dia da competência",
+      { original: null, forcada: primeiroDia },
+    );
+  } else if (dataEmissaoOriginal < primeiroDia) {
+    console.info(
+      "[processar-documento-ia] data_emissao anterior à competência, forçando para primeiro dia",
+      { original: dataEmissaoOriginal, forcada: primeiroDia },
+    );
+    dataEmissao = primeiroDia;
+    dataLancamento = primeiroDia;
+  } else {
+    dataEmissao = dataEmissaoOriginal;
+    dataLancamento = dataEmissaoOriginal;
+  }
+
   return {
     cnpj,
     razao,
@@ -204,11 +262,26 @@ function normalizar(categoria: string, extraido: any) {
     endereco,
     numero,
     dataEmissao,
+    dataLancamento,
     dataVencimento,
     valor,
     descricao,
     cfop,
   };
+}
+
+function extrairUFCliente(cliente: any): string | null {
+  if (!cliente) return null;
+  const direta = normalizeUF(cliente.uf ?? cliente.endereco_uf);
+  if (direta) return direta;
+  const dados = cliente.dados_brasilapi;
+  if (dados && typeof dados === "object") {
+    const u = normalizeUF(
+      (dados as any).uf ?? (dados as any).estado ?? (dados as any).UF,
+    );
+    if (u) return u;
+  }
+  return null;
 }
 
 Deno.serve(async (req) => {
@@ -269,7 +342,12 @@ Deno.serve(async (req) => {
   if (isTest) {
     const ai = await extrairComIA(categoria, mime, b64);
     if (!ai.ok) return json({ ok: false, error: ai.error }, ai.status);
-    const norm = normalizar(categoria, ai.data);
+    const periodoTest =
+      String(form.get("periodo") ?? "").trim().match(/^\d{4}-\d{2}$/)
+        ? String(form.get("periodo")).trim()
+        : new Date().toISOString().slice(0, 7);
+    const ufClienteTest = normalizeUF(form.get("uf_cliente"));
+    const norm = normalizar(categoria, ai.data, ufClienteTest, periodoTest);
     return json({
       ok: true,
       test: true,
@@ -319,14 +397,16 @@ Deno.serve(async (req) => {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
+  // Carrega cliente com tudo que possa ter UF.
   const { data: cliente } = await admin
     .from("clientes")
-    .select("id")
+    .select("*")
     .eq("id", cliente_id)
     .maybeSingle();
   if (!cliente) {
     return json({ ok: false, error: "Cliente não encontrado." }, 404);
   }
+  const ufCliente = extrairUFCliente(cliente);
 
   const { data: op } = await admin
     .from("cliente_operacoes")
@@ -364,7 +444,7 @@ Deno.serve(async (req) => {
   const ai = await extrairComIA(categoria, mime, b64);
   if (!ai.ok) return json({ ok: false, error: ai.error }, ai.status);
   const extraido = ai.data;
-  const n = normalizar(categoria, extraido);
+  const n = normalizar(categoria, extraido, ufCliente, periodo);
 
   // Competência
   const { data: comp, error: compErr } = await admin
@@ -394,37 +474,66 @@ Deno.serve(async (req) => {
   // Nota
   const idExterno =
     `${categoria}_${n.numero ?? `sem_num_${ts}`}_${n.cnpj ?? "sem_cnpj"}`;
-  const { data: notaSaved, error: notaErr } = await admin
-    .from("notas_fiscais")
-    .upsert(
-      {
-        competencia_id,
-        id_externo: idExterno,
-        tipo_documento: categoria,
-        categoria_doc: categoria,
-        numero_nfe: n.numero,
-        emissao_nfe: n.dataEmissao,
-        data_competencia: n.dataEmissao,
-        data_vencimento: n.dataVencimento,
-        prestador_razao: n.razao,
-        prestador_cnpj: digitsOnly(n.cnpj),
-        prestador_uf: n.uf,
-        prestador_municipio: n.municipio,
-        prestador_endereco: n.endereco,
-        valor_nfe: n.valor,
-        desconto: 0,
-        valor_contabil: n.valor,
-        cancelada: false,
-        raw_data: {
-          extraido_ia: extraido,
-          arquivo_original: storagePath,
-          mime,
-        },
-      },
-      { onConflict: "competencia_id,id_externo" },
-    )
-    .select("id")
-    .single();
+
+  const notaPayloadBase = {
+    competencia_id,
+    id_externo: idExterno,
+    tipo_documento: categoria,
+    categoria_doc: categoria,
+    numero_nfe: n.numero,
+    emissao_nfe: n.dataEmissao,
+    data_competencia: n.dataEmissao,
+    data_vencimento: n.dataVencimento,
+    prestador_razao: n.razao,
+    prestador_cnpj: digitsOnly(n.cnpj),
+    prestador_uf: n.uf,
+    prestador_municipio: n.municipio,
+    prestador_endereco: n.endereco,
+    valor_nfe: n.valor,
+    desconto: 0,
+    valor_contabil: n.valor,
+    cancelada: false,
+    raw_data: {
+      extraido_ia: extraido,
+      arquivo_original: storagePath,
+      mime,
+      data_lancamento: n.dataLancamento,
+    },
+  };
+
+  // Tenta com data_lancamento como coluna; se a coluna não existir, faz fallback.
+  let notaSaved: { id: string } | null = null;
+  let notaErr: any = null;
+  {
+    const tentativa = await admin
+      .from("notas_fiscais")
+      .upsert(
+        { ...notaPayloadBase, data_lancamento: n.dataLancamento },
+        { onConflict: "competencia_id,id_externo" },
+      )
+      .select("id")
+      .single();
+    if (tentativa.error) {
+      const msg = String(tentativa.error.message ?? "").toLowerCase();
+      if (msg.includes("data_lancamento") || msg.includes("column")) {
+        console.warn(
+          "[processar-documento-ia] coluna data_lancamento ausente; fallback para raw_data",
+          tentativa.error.message,
+        );
+        const fallback = await admin
+          .from("notas_fiscais")
+          .upsert(notaPayloadBase, { onConflict: "competencia_id,id_externo" })
+          .select("id")
+          .single();
+        notaSaved = fallback.data;
+        notaErr = fallback.error;
+      } else {
+        notaErr = tentativa.error;
+      }
+    } else {
+      notaSaved = tentativa.data;
+    }
+  }
   if (notaErr || !notaSaved) {
     return json(
       { ok: false, error: `Falha ao salvar nota: ${notaErr?.message}` },
@@ -470,8 +579,12 @@ Deno.serve(async (req) => {
     campos_processados: {
       cnpj: n.cnpj,
       razao: n.razao,
+      uf_prestador: n.uf,
+      uf_cliente: ufCliente,
+      cfop: n.cfop,
       valor: n.valor,
       data_emissao: n.dataEmissao,
+      data_lancamento: n.dataLancamento,
       data_vencimento: n.dataVencimento,
     },
   });
