@@ -464,8 +464,13 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: `Falha ao atualizar status: ${updErr.message}` }, 500);
   }
 
-  const tipoSuffix = isDocAvulso ? "avulso" : (comp.tipo === "nfe_entrada" ? "entrada" : "saida");
-  const filename = `dominio_${isDocAvulso ? "209" : "nfe"}_${cnpjEmpresa}_${comp.periodo}_${tipoSuffix}.txt`;
+  const tipoSuffix = isDocAvulso
+    ? "avulso"
+    : isNfseTomada
+    ? "nfse_tomada"
+    : (comp.tipo === "nfe_entrada" ? "entrada" : "saida");
+  const filenamePrefix = semItens ? "dominio_209" : "dominio_nfe";
+  const filename = `${filenamePrefix}_${cnpjEmpresa}_${comp.periodo}_${tipoSuffix}.txt`;
 
   // Auditoria — registra exportação (não bloqueia em caso de falha)
   try {
