@@ -518,12 +518,12 @@ Deno.serve(async (req) => {
     linhas.push(campos.join(";"));
   }
 
-  console.info(
-    `[gerar-txt-separador] Export concluído — notas=${notas.length} itens=${linhas.length} soma_valor_contabil=${somaValorContabil.toFixed(2)}`,
-  );
-
   const conteudo = linhas.join("\r\n") + "\r\n";
-  const bytes = toLatin1Bytes(conteudo);
+  const { bytes, substituidos: caracteres_substituidos } = toLatin1Bytes(conteudo);
+
+  console.info(
+    `[gerar-txt-separador] Export concluído — notas=${notas.length} itens=${linhas.length} soma_valor_contabil=${somaValorContabil.toFixed(2)} caracteres_substituidos=${caracteres_substituidos}`,
+  );
 
   // Atualiza status
   const { error: updErr } = await admin
