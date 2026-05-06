@@ -203,11 +203,12 @@ Deno.serve(async (req) => {
       400,
     );
   }
-  if (op.layout_export !== "dominio_separador") {
+  const layoutEsperado = isDocAvulso ? "dominio_layout_209" : "dominio_separador";
+  if (op.layout_export !== layoutEsperado) {
     return json(
       {
         ok: false,
-        error: `Layout de exportação configurado é "${op.layout_export}", esperado "dominio_separador".`,
+        error: `Layout de exportação configurado é "${op.layout_export}", esperado "${layoutEsperado}".`,
       },
       400,
     );
