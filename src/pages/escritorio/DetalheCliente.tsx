@@ -1377,7 +1377,7 @@ function AbaOperacoes({ clienteId }: { clienteId: string }) {
     setLoading(true);
     const { data, error } = await (supabase as any)
       .from("cliente_operacoes")
-      .select("cliente_id, tipo, layout_export")
+      .select("cliente_id, tipo, layout_export, cfop_servico_par")
       .eq("cliente_id", clienteId);
     if (error) {
       toast.error("Algo precisa de atenção", { description: error.message });
@@ -1390,15 +1390,15 @@ function AbaOperacoes({ clienteId }: { clienteId: string }) {
       nfe_saida: null,
       documento_avulso: null,
     };
-    const est = {
-      nfse_tomada: { ativo: false, layout: "dominio_leiaute_18" },
-      nfe_entrada: { ativo: false, layout: "dominio_separador" },
-      nfe_saida: { ativo: false, layout: "dominio_separador" },
-      documento_avulso: { ativo: false, layout: "dominio_layout_209" },
+    const est: Record<TipoOperacao, { ativo: boolean; layout: string; cfopPar: string }> = {
+      nfse_tomada: { ativo: false, layout: "dominio_leiaute_18", cfopPar: "1933_2933" },
+      nfe_entrada: { ativo: false, layout: "dominio_separador", cfopPar: "1933_2933" },
+      nfe_saida: { ativo: false, layout: "dominio_separador", cfopPar: "1933_2933" },
+      documento_avulso: { ativo: false, layout: "dominio_layout_209", cfopPar: "1933_2933" },
     };
     (data ?? []).forEach((r: OperacaoRow) => {
       orig[r.tipo] = r;
-      est[r.tipo] = { ativo: true, layout: r.layout_export };
+      est[r.tipo] = { ativo: true, layout: r.layout_export, cfopPar: r.cfop_servico_par ?? "1933_2933" };
     });
     setOriginal(orig);
     setEstado(est);
@@ -1414,6 +1414,7 @@ function AbaOperacoes({ clienteId }: { clienteId: string }) {
       const eraAtivo = !!o;
       if (eraAtivo !== e.ativo) return true;
       if (eraAtivo && o!.layout_export !== e.layout) return true;
+      if (eraAtivo && t.key === "nfse_tomada" && (o!.cfop_servico_par ?? "1933_2933") !== e.cfopPar) return true;
       return false;
     });
   }, [original, estado]);
