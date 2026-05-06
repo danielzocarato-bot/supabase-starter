@@ -612,7 +612,8 @@ Deno.serve(async (req) => {
   const extraido = ai.data;
   await enriquecerComBrasilAPI(extraido);
   
-  const n = normalizar(categoria, extraido, ufCliente, periodo);
+  const cfopPar = ((op as any)?.cfop_servico_par ?? "1933_2933") as string;
+  const n = normalizar(categoria, extraido, ufCliente, periodo, cfopPar);
 
   // Competência
   const { data: comp, error: compErr } = await admin
