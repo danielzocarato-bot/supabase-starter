@@ -344,6 +344,29 @@ Deno.serve(async (req) => {
     let cfop = "0";
     if (semItens) {
       codAcum = String((n as any).acumuladores?.codigo ?? "0").trim();
+
+      // CFOP modo semItens:
+      // 1) tenta CFOP do primeiro item (documento_avulso geralmente tem)
+      const cfopItem = itens.length > 0 ? (itens[0].cfop ?? "").toString().trim() : "";
+      if (cfopItem !== "") {
+        cfop = formatInt(cfopItem);
+        console.info(`[gerar-txt-separador] CFOP via item: ${cfop} (nota ${n.numero_nfe ?? "?"})`);
+      } else {
+        // 2) calcula por UF (prestador vs cliente)
+        const ufPrest = (n.prestador_uf ?? "").toString().trim().toUpperCase();
+        const ufCli = (clienteUf ?? "").toString().trim().toUpperCase();
+        if (!ufPrest || !ufCli) {
+          cfop = "1949";
+          console.warn(
+            `[gerar-txt-separador] CFOP fallback 1949 (UF ausente, nota ${n.numero_nfe ?? "?"})`,
+          );
+        } else {
+          cfop = ufPrest === ufCli ? "1949" : "2949";
+          console.info(
+            `[gerar-txt-separador] CFOP via UF: ${cfop} (prestador=${ufPrest}, cliente=${ufCli}, nota ${n.numero_nfe ?? "?"})`,
+          );
+        }
+      }
     } else {
       const primeiro = itens[0];
       codAcum = String(primeiro.acumuladores?.codigo ?? "0").trim();
