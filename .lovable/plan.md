@@ -1,50 +1,65 @@
-# Excluir importação de uma competência
+## Objetivo
 
-Permitir ao escritório apagar uma competência inteira (NFSe ou NFe) — incluindo notas e itens — para poder reimportar do zero.
+Corrigir o layout de exportação de **NFS-e Tomadas** (`tipo = nfse_tomada`) no edge function `gerar-txt-separador`, gerando os **28 campos** corretos do leiaute Domínio (em vez dos 33 campos do layout NF-e).
 
-## Onde a ação aparece
+## Escopo
 
-1. **Lista de competências do cliente** (`DetalheCliente.tsx` → aba Competências): adicionar um menu de ações (`⋯`) em cada linha, ao lado do botão "Abrir", com a opção destrutiva **"Excluir importação"**.
-2. **Header da tela de classificação** (`ClassificacaoNFe.tsx` e `ClassificacaoNFSe.tsx`): mesmo item dentro de um menu `⋯` no canto direito do header, para quem já está dentro da competência. Após excluir, redireciona de volta para `/app/escritorio/clientes/{id}?tab=competencias`.
+**Arquivo único alterado:** `supabase/functions/gerar-txt-separador/index.ts`
 
-Visível apenas para perfil `escritorio` (cliente nunca apaga).
+Nenhuma migration, nenhuma mudança de schema, nenhuma outra função/tela tocada.
 
-## Fluxo de confirmação
+## Mudança
 
-`AlertDialog` destrutivo com:
+Bifurcar a montagem do array `campos` no loop de geração:
 
-- Título: **"Excluir esta importação?"**
-- Corpo:
-  - Período + tipo (ex.: "Outubro / 2025 — NF-e Entrada")
-  - "X notas e Y itens serão apagados permanentemente. Esta ação não pode ser desfeita."
-  - Aviso extra **vermelho** se `status = 'exportada'`: "Esta competência já foi exportada para o Domínio. Excluir aqui não desfaz a exportação no sistema contábil."
-- Campo de texto exigindo digitar **EXCLUIR** (case-sensitive) para liberar o botão.
-- Botão final: **"Excluir definitivamente"** (`variant="destructive"`).
+- Se `isNfseTomada` → emitir 28 campos (layout NFS Tomados).
+- Caso contrário (NF-e entrada/saída e documento_avulso) → manter os 33 campos atuais sem qualquer alteração.
 
-## Execução da exclusão
+### Mapeamento dos 28 campos
 
-Feita client-side via Supabase SDK (RLS `*_escritorio_all` já permite DELETE para escritório). Sem FK cascade no banco, então a ordem importa:
+| # | Campo | Origem |
+|---|-------|--------|
+| 1 | CPF/CNPJ | `prestador_cnpj` com máscara |
+| 2 | Razão Social | **vazio** |
+| 3 | UF | **vazio** |
+| 4 | Município | **vazio** |
+| 5 | Endereço | **vazio** |
+| 6 | Número Documento | `numero_nfe` |
+| 7 | Série | `pickSerie(raw_data)` |
+| 8 | Data Emissão | `emissao_nfe` em dd/mm/aaaa |
+| 9 | Data de Entrada | mesma data de emissão |
+| 10 | Situação | `0` ou `2` (cancelada) |
+| 11 | Acumulador | `acumuladores.codigo` |
+| 12 | CFOP | par configurado em `cliente_operacoes.cfop_servico_par` (1933/1949) |
+| 13 | Valor Serviços | `valor_nfe` |
+| 14 | Valor Descontos | `desconto` |
+| 15 | Valor Contábil | `valor_contabil` (ou `valor_nfe - desconto`) |
+| 16 | Base de Cálculo | `raw_data->>'Base de Cálculo ISS'` ou `0` |
+| 17 | Alíquota ISS | `0` (não disponível na planilha) |
+| 18 | Valor ISS Normal | `0` |
+| 19 | Valor ISS Retido | `raw_data->>'Valor ISS Retido'` ou `0` |
+| 20 | Valor IRRF | `raw_data->>'Valor IRRF'` ou `0` |
+| 21 | Valor PIS | `raw_data->>'Valor PIS'` ou `0` |
+| 22 | Valor COFINS | `raw_data->>'Valor COFINS'` ou `0` |
+| 23 | Valor CSLL | `raw_data->>'Valor CSLL'` ou `0` |
+| 24 | Valor CRF | `raw_data->>'Valor CSRF'` ou `0` |
+| 25 | Valor INSS | `raw_data->>'Valor INSS'` ou `0` |
+| 26 | Código do Item | vazio |
+| 27 | Quantidade | vazio |
+| 28 | Valor Unitário | vazio |
 
-```text
-1. delete from notas_fiscais_itens
-   where nota_id in (select id from notas_fiscais where competencia_id = X)
-2. delete from notas_fiscais where competencia_id = X
-3. delete from competencias where id = X
+### Detalhes técnicos
+
+- Reaproveita helpers existentes: `formatValorBR`, `formatInt`, `formatDateBR`, `formatCnpjMask`, `parseNum`, `toLatin1Bytes`.
+- Mantém separador `;`, CRLF, encoding Latin-1, zeros como `"0"`.
+- Mantém o nome do arquivo (`dominio_209_<cnpj>_<periodo>_nfse_tomada.txt`) e o `formato` da auditoria (`dominio_layout_209`).
+- Mantém o cálculo de CFOP via `cfop_servico_par` (já implementado no ramo `semItens`) para o campo 12.
+- Mantém a verificação de pendências de classificação já existente.
+
+## Validação esperada
+
+Linha gerada no formato:
 ```
-
-Encadeado num helper `excluirCompetencia(id)` em `src/lib/competencias.ts` (novo). Em qualquer erro, toast `"Algo precisa de atenção"` com a mensagem; sem rollback (Supabase JS não suporta transação multi-statement, mas a ordem garante consistência: se passo 2 falhar, itens órfãos já foram limpos; se passo 3 falhar, competência fica vazia e pode ser reaberta/reexcluída).
-
-Ao final: `toast.success("Importação excluída.")` + recarregar lista (ou navegar fora se for do header).
-
-## Não mexer
-
-- Edge Functions (não precisa criar nenhuma — RLS já cobre).
-- Schema do banco (sem migration).
-- Layout de exportação, parser de XML, telas existentes que não foram citadas.
-
-## Arquivos afetados
-
-- `src/lib/competencias.ts` — novo helper `excluirCompetencia`.
-- `src/pages/escritorio/DetalheCliente.tsx` — menu de ações + AlertDialog na aba Competências.
-- `src/pages/ClassificacaoNFe.tsx` — menu `⋯` no header com mesma ação.
-- `src/pages/ClassificacaoNFSe.tsx` — idem.
+62.081.888/0001-91;;;;;13;E;30/04/2026;30/04/2026;0;2500;1933;10000;0;10000;10000;0;0;200;0;0;0;0;0;0;;;
+```
+(idêntico ao TXT exemplo aceito pela Domínio).
