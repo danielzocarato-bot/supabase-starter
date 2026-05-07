@@ -477,43 +477,88 @@ Deno.serve(async (req) => {
 
     somaValorContabil += parseNum(valorContabil);
 
-    // Layout macro Excel: campos de texto SEM aspas, separador ;
-    // Campos 25-33 (item, qtde, valor unit, PIS/COFINS) ficam vazios conforme exemplo da macro
-    const campos = [
-      cnpjPrestador,                                     // 1  C CNPJ
-      razaoSocial,                                       // 2  C Razão social
-      uf,                                                // 3  C UF
-      municipio,                                         // 4  C Município
-      endereco,                                          // 5  C Endereço
-      numDoc,                                            // 6  G Nº doc
-      serie,                                             // 7  C Série
-      dataEmi,                                           // 8  D Data emissão
-      situacao,                                          // 9  N Situação
-      formatInt(codAcum),                                // 10 N Acumulador
-      cfop,                                              // 11 N CFOP
-      valorProd,                                         // 12 R Valor produtos
-      valorDesc,                                         // 13 R Desconto
-      valorContabil,                                     // 14 R Valor contábil
-      vBC_ICMS,                                          // 15 R Base ICMS
-      pICMS,                                             // 16 R Aliq ICMS
-      vICMS,                                             // 17 R Valor ICMS
-      vOutrasICMS,                                       // 18 R Outras ICMS
-      vIsentaICMS,                                       // 19 R Isentas ICMS
-      vBC_IPI,                                           // 20 R Base IPI
-      pIPI,                                              // 21 R Aliq IPI
-      vIPI,                                              // 22 R Valor IPI
-      vOutrasIPI,                                        // 23 R Outras IPI
-      vIsentaIPI,                                        // 24 R Isentas IPI
-      "",                                                // 25 C Cód. item
-      "",                                                // 26 R Qtde
-      "",                                                // 27 R Valor unit.
-      "",                                                // 28 N CST PIS/COFINS
-      "",                                                // 29 R Base PIS/COFINS
-      "",                                                // 30 R Aliq PIS
-      "",                                                // 31 R Valor PIS
-      "",                                                // 32 R Aliq COFINS
-      "",                                                // 33 R Valor COFINS
-    ];
+    let campos: string[];
+
+    if (isNfseTomada) {
+      // Layout NFS-e Tomadas Domínio (28 campos)
+      const raw = (n.raw_data ?? {}) as Record<string, any>;
+      const baseISS = formatValorBR(raw["Base de Cálculo ISS"]);
+      const vISSRetido = formatValorBR(raw["Valor ISS Retido"]);
+      const vIRRF = formatValorBR(raw["Valor IRRF"]);
+      const vPIS = formatValorBR(raw["Valor PIS"]);
+      const vCOFINS = formatValorBR(raw["Valor COFINS"]);
+      const vCSLL = formatValorBR(raw["Valor CSLL"]);
+      const vCRF = formatValorBR(raw["Valor CSRF"]);
+      const vINSS = formatValorBR(raw["Valor INSS"]);
+
+      campos = [
+        cnpjPrestador,        // 1  CPF/CNPJ
+        "",                   // 2  Razão Social
+        "",                   // 3  UF
+        "",                   // 4  Município
+        "",                   // 5  Endereço
+        numDoc,               // 6  Número Documento
+        serie,                // 7  Série
+        dataEmi,              // 8  Data Emissão
+        dataEmi,              // 9  Data de Entrada
+        situacao,             // 10 Situação
+        formatInt(codAcum),   // 11 Acumulador
+        cfop,                 // 12 CFOP
+        valorProd,            // 13 Valor Serviços
+        valorDesc,            // 14 Valor Descontos
+        valorContabil,        // 15 Valor Contábil
+        baseISS,              // 16 Base de Cálculo
+        "0",                  // 17 Alíquota ISS
+        "0",                  // 18 Valor ISS Normal
+        vISSRetido,           // 19 Valor ISS Retido
+        vIRRF,                // 20 Valor IRRF
+        vPIS,                 // 21 Valor PIS
+        vCOFINS,              // 22 Valor COFINS
+        vCSLL,                // 23 Valor CSLL
+        vCRF,                 // 24 Valor CRF
+        vINSS,                // 25 Valor INSS
+        "",                   // 26 Código do Item
+        "",                   // 27 Quantidade
+        "",                   // 28 Valor Unitário
+      ];
+    } else {
+      // Layout macro Excel — NF-e entrada/saída e documento_avulso (33 campos)
+      campos = [
+        cnpjPrestador,                                     // 1  C CNPJ
+        razaoSocial,                                       // 2  C Razão social
+        uf,                                                // 3  C UF
+        municipio,                                         // 4  C Município
+        endereco,                                          // 5  C Endereço
+        numDoc,                                            // 6  G Nº doc
+        serie,                                             // 7  C Série
+        dataEmi,                                           // 8  D Data emissão
+        situacao,                                          // 9  N Situação
+        formatInt(codAcum),                                // 10 N Acumulador
+        cfop,                                              // 11 N CFOP
+        valorProd,                                         // 12 R Valor produtos
+        valorDesc,                                         // 13 R Desconto
+        valorContabil,                                     // 14 R Valor contábil
+        vBC_ICMS,                                          // 15 R Base ICMS
+        pICMS,                                             // 16 R Aliq ICMS
+        vICMS,                                             // 17 R Valor ICMS
+        vOutrasICMS,                                       // 18 R Outras ICMS
+        vIsentaICMS,                                       // 19 R Isentas ICMS
+        vBC_IPI,                                           // 20 R Base IPI
+        pIPI,                                              // 21 R Aliq IPI
+        vIPI,                                              // 22 R Valor IPI
+        vOutrasIPI,                                        // 23 R Outras IPI
+        vIsentaIPI,                                        // 24 R Isentas IPI
+        "",                                                // 25 C Cód. item
+        "",                                                // 26 R Qtde
+        "",                                                // 27 R Valor unit.
+        "",                                                // 28 N CST PIS/COFINS
+        "",                                                // 29 R Base PIS/COFINS
+        "",                                                // 30 R Aliq PIS
+        "",                                                // 31 R Valor PIS
+        "",                                                // 32 R Aliq COFINS
+        "",                                                // 33 R Valor COFINS
+      ];
+    }
 
     linhas.push(campos.join(";"));
   }
