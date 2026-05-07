@@ -483,7 +483,20 @@ Deno.serve(async (req) => {
       // Layout NFS-e Tomadas Domínio (28 campos)
       const raw = (n.raw_data ?? {}) as Record<string, any>;
       const baseISS = formatValorBR(raw["Base de Cálculo ISS"]);
-      const vISSRetido = formatValorBR(raw["Valor ISS Retido"]);
+
+      // ISS Retido: a planilha do UneCont separa ISS dentro/fora do município.
+      // Usa "Dentro" se houver valor ou alíquota; senão usa "Fora".
+      const issDentroVal = parseNum(raw["ISS Dentro do Município"]);
+      const issForaVal   = parseNum(raw["ISS Fora do Município"]);
+      const issDentroPct = parseNum(raw["% ISS Dentro do Município"]);
+      const issForaPct   = parseNum(raw["% ISS Fora do Município"]);
+      const usarDentro = issDentroVal > 0 || (issDentroPct > 0 && issForaVal === 0);
+      const valorIssRetido = usarDentro ? issDentroVal : issForaVal;
+      const aliquotaIssDecimal = usarDentro ? issDentroPct : issForaPct;
+      // Planilha grava alíquota como decimal (ex.: 0.02). Layout Domínio espera valor percentual (2).
+      const aliquotaIss = formatValorBR(aliquotaIssDecimal * 100);
+      const vISSRetido  = formatValorBR(valorIssRetido);
+
       const vIRRF = formatValorBR(raw["Valor IRRF"]);
       const vPIS = formatValorBR(raw["Valor PIS"]);
       const vCOFINS = formatValorBR(raw["Valor COFINS"]);

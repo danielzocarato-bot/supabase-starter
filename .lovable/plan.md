@@ -1,65 +1,65 @@
-## Objetivo
+# Correção: ISS retido e alíquota ISS — NFS-e Tomadas
 
-Corrigir o layout de exportação de **NFS-e Tomadas** (`tipo = nfse_tomada`) no edge function `gerar-txt-separador`, gerando os **28 campos** corretos do leiaute Domínio (em vez dos 33 campos do layout NF-e).
+## Problema
 
-## Escopo
+O exportador `gerar-txt-separador` lê o `raw_data` da nota procurando chaves que **não existem** na planilha do UneCont:
 
-**Arquivo único alterado:** `supabase/functions/gerar-txt-separador/index.ts`
+- Procura `raw_data["Valor ISS Retido"]` → não existe na planilha → sai `0`
+- Define alíquota ISS como literal `"0"` → fica sempre zerado
 
-Nenhuma migration, nenhuma mudança de schema, nenhuma outra função/tela tocada.
+A planilha real tem colunas separadas para ISS dentro/fora do município (alíquota como decimal e valor) e o `importar-planilha` salva a row inteira em `raw_data`, então os dados estão lá — só o nome da chave está errado no exportador.
 
-## Mudança
+## Solução
 
-Bifurcar a montagem do array `campos` no loop de geração:
+Em `supabase/functions/gerar-txt-separador/index.ts`, dentro do bloco `if (isNfseTomada)`, ajustar o mapeamento dos campos 17 e 19 para ler as colunas corretas da planilha.
 
-- Se `isNfseTomada` → emitir 28 campos (layout NFS Tomados).
-- Caso contrário (NF-e entrada/saída e documento_avulso) → manter os 33 campos atuais sem qualquer alteração.
+**Regra:** se houver valor em "ISS Dentro do Município" usa esse par; senão usa "Fora". Se ambos zerados, fica `0`.
 
-### Mapeamento dos 28 campos
+### Mudanças exatas
 
-| # | Campo | Origem |
-|---|-------|--------|
-| 1 | CPF/CNPJ | `prestador_cnpj` com máscara |
-| 2 | Razão Social | **vazio** |
-| 3 | UF | **vazio** |
-| 4 | Município | **vazio** |
-| 5 | Endereço | **vazio** |
-| 6 | Número Documento | `numero_nfe` |
-| 7 | Série | `pickSerie(raw_data)` |
-| 8 | Data Emissão | `emissao_nfe` em dd/mm/aaaa |
-| 9 | Data de Entrada | mesma data de emissão |
-| 10 | Situação | `0` ou `2` (cancelada) |
-| 11 | Acumulador | `acumuladores.codigo` |
-| 12 | CFOP | par configurado em `cliente_operacoes.cfop_servico_par` (1933/1949) |
-| 13 | Valor Serviços | `valor_nfe` |
-| 14 | Valor Descontos | `desconto` |
-| 15 | Valor Contábil | `valor_contabil` (ou `valor_nfe - desconto`) |
-| 16 | Base de Cálculo | `raw_data->>'Base de Cálculo ISS'` ou `0` |
-| 17 | Alíquota ISS | `0` (não disponível na planilha) |
-| 18 | Valor ISS Normal | `0` |
-| 19 | Valor ISS Retido | `raw_data->>'Valor ISS Retido'` ou `0` |
-| 20 | Valor IRRF | `raw_data->>'Valor IRRF'` ou `0` |
-| 21 | Valor PIS | `raw_data->>'Valor PIS'` ou `0` |
-| 22 | Valor COFINS | `raw_data->>'Valor COFINS'` ou `0` |
-| 23 | Valor CSLL | `raw_data->>'Valor CSLL'` ou `0` |
-| 24 | Valor CRF | `raw_data->>'Valor CSRF'` ou `0` |
-| 25 | Valor INSS | `raw_data->>'Valor INSS'` ou `0` |
-| 26 | Código do Item | vazio |
-| 27 | Quantidade | vazio |
-| 28 | Valor Unitário | vazio |
+Antes (campo 17 e 19):
+```ts
+const vISSRetido = formatValorBR(raw["Valor ISS Retido"]);
+// ...
+"0",                  // 17 Alíquota ISS
+"0",                  // 18 Valor ISS Normal
+vISSRetido,           // 19 Valor ISS Retido
+```
 
-### Detalhes técnicos
+Depois:
+```ts
+const issDentroVal = parseNum(raw["ISS Dentro do Município"]);
+const issForaVal   = parseNum(raw["ISS Fora do Município"]);
+const issDentroPct = parseNum(raw["% ISS Dentro do Município"]);
+const issForaPct   = parseNum(raw["% ISS Fora do Município"]);
 
-- Reaproveita helpers existentes: `formatValorBR`, `formatInt`, `formatDateBR`, `formatCnpjMask`, `parseNum`, `toLatin1Bytes`.
-- Mantém separador `;`, CRLF, encoding Latin-1, zeros como `"0"`.
-- Mantém o nome do arquivo (`dominio_209_<cnpj>_<periodo>_nfse_tomada.txt`) e o `formato` da auditoria (`dominio_layout_209`).
-- Mantém o cálculo de CFOP via `cfop_servico_par` (já implementado no ramo `semItens`) para o campo 12.
-- Mantém a verificação de pendências de classificação já existente.
+const usarDentro = issDentroVal > 0 || (issDentroPct > 0 && issForaVal === 0);
+const valorIssRetido = usarDentro ? issDentroVal : issForaVal;
+const aliquotaIssDecimal = usarDentro ? issDentroPct : issForaPct;
+// planilha guarda como decimal (0.02). TXT espera 2 → multiplica por 100.
+const aliquotaIss = formatValorBR(aliquotaIssDecimal * 100);
+const vISSRetido  = formatValorBR(valorIssRetido);
+// ...
+aliquotaIss,          // 17 Alíquota ISS
+"0",                  // 18 Valor ISS Normal
+vISSRetido,           // 19 Valor ISS Retido
+```
+
+Os demais campos (IRRF, PIS, COFINS, CSLL, CSRF, INSS, Base ISS) já estão com nomes corretos na planilha — não mexer.
 
 ## Validação esperada
 
-Linha gerada no formato:
+Para a NF do exemplo (Magon Consultoria, valor 10000, ISS Dentro 200, % ISS Dentro 0.02):
+
 ```
-62.081.888/0001-91;;;;;13;E;30/04/2026;30/04/2026;0;2500;1933;10000;0;10000;10000;0;0;200;0;0;0;0;0;0;;;
+...;10000;10000;2;0;200;0;0;0;0;0;0;;;
+       ^      ^   ^
+    base=10000 alíq=2 retido=200
 ```
-(idêntico ao TXT exemplo aceito pela Domínio).
+
+Que bate exatamente com o TXT aceito pela Domínio.
+
+## Escopo
+
+- Apenas `supabase/functions/gerar-txt-separador/index.ts`
+- Sem migration, sem alteração de outras funções, sem mudança de UI
