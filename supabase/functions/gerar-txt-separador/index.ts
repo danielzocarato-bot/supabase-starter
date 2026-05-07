@@ -521,7 +521,7 @@ Deno.serve(async (req) => {
         valorDesc,            // 14 Valor Descontos
         valorContabil,        // 15 Valor Contábil
         baseISS,              // 16 Base de Cálculo
-        "0",                  // 17 Alíquota ISS
+        aliquotaIss,          // 17 Alíquota ISS
         "0",                  // 18 Valor ISS Normal
         vISSRetido,           // 19 Valor ISS Retido
         vIRRF,                // 20 Valor IRRF
