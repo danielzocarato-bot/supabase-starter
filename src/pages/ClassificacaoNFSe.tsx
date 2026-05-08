@@ -748,7 +748,7 @@ export default function ClassificacaoNFSe() {
                     className={
                       competencia.status === "exportada"
                         ? ""
-                        : "bg-brand text-brand-foreground hover:bg-brand/90"
+                        : "bg-brand text-brand-foreground hover:bg-brand/90 shadow-brand hover:shadow-md transition-all"
                     }
                   >
                     {exportando
