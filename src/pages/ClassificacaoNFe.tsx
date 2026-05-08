@@ -768,7 +768,7 @@ export default function ClassificacaoNFe() {
                     className={
                       competencia.status === "exportada"
                         ? ""
-                        : "bg-brand text-brand-foreground hover:bg-brand/90"
+                        : "bg-brand text-brand-foreground hover:bg-brand/90 shadow-brand hover:shadow-md transition-all"
                     }
                   >
                     {exportando
@@ -811,9 +811,9 @@ export default function ClassificacaoNFe() {
             {competencia.status !== "exportada" && (
               <div className="flex items-end justify-between gap-6">
                 <div className="flex-1 min-w-0 space-y-1.5">
-                  <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                  <div className="h-2.5 w-full bg-muted rounded-full overflow-hidden ring-1 ring-border/50">
                     <motion.div
-                      className="h-full bg-brand"
+                      className="h-full rounded-full bg-gradient-to-r from-brand via-brand to-info"
                       initial={{ width: 0 }}
                       animate={{ width: `${pct}%` }}
                       transition={{ duration: 0.4, ease: "easeOut" }}
@@ -835,7 +835,7 @@ export default function ClassificacaoNFe() {
                     >
                       <Button
                         size="lg"
-                        className="bg-brand text-brand-foreground hover:bg-brand/90"
+                        className="bg-brand text-brand-foreground hover:bg-brand/90 shadow-brand hover:shadow-md transition-all"
                         onClick={() => status.setConfirmConcluirOpen(true)}
                       >
                         Concluir competência
@@ -1382,7 +1382,7 @@ function NotaCard({
                           : { backgroundColor: "hsl(var(--success) / 0)" }
                       }
                       transition={{ duration: 0.6, ease: "easeOut" }}
-                      className="border-b last:border-b-0 hover:bg-muted/30"
+                      className="border-b last:border-b-0 transition-colors hover:bg-muted/40"
                     >
                       <TableCell className="tabular-nums">{i.numero_item}</TableCell>
                       <TableCell className="max-w-[280px]">
@@ -1541,7 +1541,7 @@ function GrupoCfopCard({
                           : { backgroundColor: "hsl(var(--success) / 0)" }
                       }
                       transition={{ duration: 0.6, ease: "easeOut" }}
-                      className="border-b last:border-b-0 hover:bg-muted/30"
+                      className="border-b last:border-b-0 transition-colors hover:bg-muted/40"
                     >
                       <TableCell className="font-medium tabular-nums whitespace-nowrap">
                         {i.nota_numero ?? "—"}

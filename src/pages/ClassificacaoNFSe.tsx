@@ -748,7 +748,7 @@ export default function ClassificacaoNFSe() {
                     className={
                       competencia.status === "exportada"
                         ? ""
-                        : "bg-brand text-brand-foreground hover:bg-brand/90"
+                        : "bg-brand text-brand-foreground hover:bg-brand/90 shadow-brand hover:shadow-md transition-all"
                     }
                   >
                     {exportando
@@ -791,9 +791,9 @@ export default function ClassificacaoNFSe() {
             {competencia.status !== "exportada" && (
               <div className="flex items-end justify-between gap-6">
                 <div className="flex-1 min-w-0 space-y-1.5">
-                  <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                  <div className="h-2.5 w-full bg-muted rounded-full overflow-hidden ring-1 ring-border/50">
                     <motion.div
-                      className="h-full bg-brand"
+                      className="h-full rounded-full bg-gradient-to-r from-brand via-brand to-info"
                       initial={{ width: 0 }}
                       animate={{ width: `${pct}%` }}
                       transition={{ duration: 0.4, ease: "easeOut" }}
@@ -815,7 +815,7 @@ export default function ClassificacaoNFSe() {
                     >
                       <Button
                         size="lg"
-                        className="bg-brand text-brand-foreground hover:bg-brand/90"
+                        className="bg-brand text-brand-foreground hover:bg-brand/90 shadow-brand hover:shadow-md transition-all"
                         onClick={() => setConfirmConcluirOpen(true)}
                       >
                         Concluir competência
@@ -1024,7 +1024,7 @@ export default function ClassificacaoNFSe() {
                           : { backgroundColor: "hsl(var(--success) / 0)" }
                       }
                       transition={{ duration: 0.6, ease: "easeOut" }}
-                      className={`border-b last:border-b-0 transition-opacity hover:bg-muted/30 cursor-pointer ${
+                      className={`border-b last:border-b-0 transition-colors hover:bg-muted/40 cursor-pointer ${
                         n.cancelada ? "opacity-60" : ""
                       }`}
                       onClick={(e) => {
