@@ -957,8 +957,54 @@ export default function ClassificacaoNFe() {
           acumuladores={acumuladores}
           readOnly={readOnly}
           pisca={pisca}
+          permitirEditarItem={competencia.tipo !== "nfe_entrada" && competencia.tipo !== "nfe_saida"}
           onClose={() => setDrawerNotaId(null)}
           onClassificarItem={(itemId, aid) => aplicarAcumuladorIds([itemId], aid, false)}
+          onSalvarDados={async (notaId, patchNota, patchItem) => {
+            const { error: errN } = await (supabase as any)
+              .from("notas_fiscais")
+              .update(patchNota)
+              .eq("id", notaId);
+            if (errN) throw new Error(errN.message);
+            if (patchItem) {
+              const { error: errI } = await (supabase as any)
+                .from("notas_fiscais_itens")
+                .update(patchItem)
+                .eq("nota_id", notaId)
+                .eq("numero_item", 1);
+              if (errI) throw new Error(errI.message);
+            }
+            // Atualiza estado local
+            setNotasMapState((prev) => {
+              const m = new Map(prev);
+              const cur = m.get(notaId);
+              if (cur) {
+                m.set(notaId, {
+                  ...cur,
+                  prestador_razao: patchNota.prestador_razao ?? cur.prestador_razao,
+                  prestador_cnpj: patchNota.prestador_cnpj ?? cur.prestador_cnpj,
+                  numero_nfe: patchNota.numero_nfe ?? cur.numero_nfe,
+                  emissao_nfe: patchNota.emissao_nfe ?? cur.emissao_nfe,
+                  valor_nfe: patchNota.valor_nfe ?? cur.valor_nfe,
+                });
+              }
+              return m;
+            });
+            if (patchItem) {
+              setItens((prev) =>
+                prev.map((i) =>
+                  i.nota_id === notaId && i.numero_item === 1
+                    ? {
+                        ...i,
+                        descricao_produto: patchItem.descricao_produto ?? i.descricao_produto,
+                        cfop: patchItem.cfop ?? i.cfop,
+                        valor: patchItem.valor ?? i.valor,
+                      }
+                    : i,
+                ),
+              );
+            }
+          }}
         />
 
         {/* Dialog: pendentes de exportação */}
