@@ -1,65 +1,43 @@
-# Correção: ISS retido e alíquota ISS — NFS-e Tomadas
+# Permitir correções pós-classificação em todos os tipos de documento
 
-## Problema
+Hoje, tanto em NFS-e tomadas (planilha), quanto NF-e entrada/saída (XML/SIEG) e documento avulso (upload com IA), depois que a nota é salva os campos extraídos viram somente leitura, e quando a competência é concluída tudo trava. Vamos resolver para todos os fluxos.
 
-O exportador `gerar-txt-separador` lê o `raw_data` da nota procurando chaves que **não existem** na planilha do UneCont:
+## Etapa 1 — Editar dados da nota dentro do drawer (todos os tipos)
 
-- Procura `raw_data["Valor ISS Retido"]` → não existe na planilha → sai `0`
-- Define alíquota ISS como literal `"0"` → fica sempre zerado
+Aplicar a edição em **dois drawers**:
 
-A planilha real tem colunas separadas para ISS dentro/fora do município (alíquota como decimal e valor) e o `importar-planilha` salva a row inteira em `raw_data`, então os dados estão lá — só o nome da chave está errado no exportador.
+### A) `src/components/NotaDrawerNFe.tsx` (usado por NF-e entrada/saída e documento avulso)
 
-## Solução
+- Botão **"Editar dados"** no canto superior direito da aba Resumo.
+- Modo edição troca os `Field` por inputs para:
+  - Razão social, CNPJ, endereço, município, UF
+  - Número, emissão, vencimento
+  - Valor total
+  - Descrição e CFOP do item nº 1 (apenas quando documento avulso, pois NF-e tem múltiplos itens — para NF-e a edição de descrição/CFOP por item já existe via classificação por item; o formulário aqui só edita o cabeçalho da nota).
+- Botões **Salvar** / **Cancelar** no rodapé do drawer.
+- Salva via `update` em `notas_fiscais` (cabeçalho) e, quando aplicável, em `notas_fiscais_itens` (item 1).
+- Botão oculto se `readOnly` (competência concluída/exportada) ou `nota.cancelada`.
+- Nova prop `onSalvarDados(notaId, patchNota, patchItem?) => Promise<void>` injetada por `ClassificacaoNFe.tsx`.
 
-Em `supabase/functions/gerar-txt-separador/index.ts`, dentro do bloco `if (isNfseTomada)`, ajustar o mapeamento dos campos 17 e 19 para ler as colunas corretas da planilha.
+### B) `NotaDrawer` interno em `src/pages/ClassificacaoNFSe.tsx` (NFS-e tomadas)
 
-**Regra:** se houver valor em "ISS Dentro do Município" usa esse par; senão usa "Fora". Se ambos zerados, fica `0`.
+- Mesmo botão **"Editar dados"** dentro do drawer.
+- Modo edição com inputs para os campos do prestador e da nota NFS-e (razão, CNPJ, município, UF, número, emissão, valor, descrição/serviço municipal).
+- Salva via `update` em `notas_fiscais`.
+- Botão oculto quando competência concluída/exportada ou nota cancelada.
 
-### Mudanças exatas
+Padrão de UX, validação básica (CNPJ só dígitos, valor numérico aceitando vírgula) e toasts são compartilhados visualmente entre os dois drawers.
 
-Antes (campo 17 e 19):
-```ts
-const vISSRetido = formatValorBR(raw["Valor ISS Retido"]);
-// ...
-"0",                  // 17 Alíquota ISS
-"0",                  // 18 Valor ISS Normal
-vISSRetido,           // 19 Valor ISS Retido
-```
+## Etapa 2 — Tornar 'Reabrir competência' visível em ambas as telas
 
-Depois:
-```ts
-const issDentroVal = parseNum(raw["ISS Dentro do Município"]);
-const issForaVal   = parseNum(raw["ISS Fora do Município"]);
-const issDentroPct = parseNum(raw["% ISS Dentro do Município"]);
-const issForaPct   = parseNum(raw["% ISS Fora do Município"]);
+O botão **Reabrir competência** já existe em `ClassificacaoNFe.tsx` (linha 742) e em `ClassificacaoNFSe.tsx` (linha 722), mas hoje fica em local discreto. Ajustes:
 
-const usarDentro = issDentroVal > 0 || (issDentroPct > 0 && issForaVal === 0);
-const valorIssRetido = usarDentro ? issDentroVal : issForaVal;
-const aliquotaIssDecimal = usarDentro ? issDentroPct : issForaPct;
-// planilha guarda como decimal (0.02). TXT espera 2 → multiplica por 100.
-const aliquotaIss = formatValorBR(aliquotaIssDecimal * 100);
-const vISSRetido  = formatValorBR(valorIssRetido);
-// ...
-aliquotaIss,          // 17 Alíquota ISS
-"0",                  // 18 Valor ISS Normal
-vISSRetido,           // 19 Valor ISS Retido
-```
+- Quando o status é **concluida** (e não exportada), exibir um banner sutil no topo da página: "Competência concluída — para corrigir alguma classificação, reabra a competência." com botão **Reabrir** ao lado, em ambas as telas.
+- Mantém o botão atual onde está (não removemos), só ganhamos um ponto de entrada óbvio.
 
-Os demais campos (IRRF, PIS, COFINS, CSLL, CSRF, INSS, Base ISS) já estão com nomes corretos na planilha — não mexer.
+## Fora de escopo
 
-## Validação esperada
-
-Para a NF do exemplo (Magon Consultoria, valor 10000, ISS Dentro 200, % ISS Dentro 0.02):
-
-```
-...;10000;10000;2;0;200;0;0;0;0;0;0;;;
-       ^      ^   ^
-    base=10000 alíq=2 retido=200
-```
-
-Que bate exatamente com o TXT aceito pela Domínio.
-
-## Escopo
-
-- Apenas `supabase/functions/gerar-txt-separador/index.ts`
-- Sem migration, sem alteração de outras funções, sem mudança de UI
+- Tela de **Upload de Documentos** (`UploadDocumentos.tsx`) não muda — a edição passa a acontecer dentro do drawer da classificação, que é o mesmo lugar para documento avulso.
+- Telas de **Importar Planilha** e **Importar XMLs** não mudam.
+- Layouts de TXT, edge functions de exportação/importação — intocados.
+- Sem migrations, sem alterações em RLS, sem alterar `types.ts`.
