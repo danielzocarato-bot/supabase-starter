@@ -1382,7 +1382,7 @@ function NotaCard({
                           : { backgroundColor: "hsl(var(--success) / 0)" }
                       }
                       transition={{ duration: 0.6, ease: "easeOut" }}
-                      className="border-b last:border-b-0 hover:bg-muted/30"
+                      className="border-b last:border-b-0 transition-colors hover:bg-muted/40"
                     >
                       <TableCell className="tabular-nums">{i.numero_item}</TableCell>
                       <TableCell className="max-w-[280px]">
