@@ -36,15 +36,22 @@
     --accent: 217 90% 96%;
     --accent-foreground: 217 91% 35%;
 
-    --success: 152 61% 41%;
-    --warning: 38 92% 50%;
-    --danger: 0 72% 51%;
-    --info: 217 91% 60%;
+    --success: 162 65% 38%;
+    --warning: 32 95% 52%;
+    --danger: 350 78% 52%;
+    --info: 199 89% 48%;
+    --accent-deep: 235 65% 50%;
+    --accent-deep-foreground: 0 0% 100%;
 
-    --destructive: 0 72% 51%;
+    --destructive: 350 78% 52%;
     --destructive-foreground: 0 0% 100%;
 
     --radius: 0.75rem;
+
+    --shadow-soft: 0 1px 2px 0 hsl(220 25% 11% / 0.04), 0 1px 3px 0 hsl(220 25% 11% / 0.06);
+    --shadow-md: 0 4px 8px -2px hsl(220 25% 11% / 0.08), 0 2px 4px -1px hsl(220 25% 11% / 0.06);
+    --shadow-lg: 0 12px 24px -6px hsl(220 25% 11% / 0.12), 0 4px 8px -2px hsl(220 25% 11% / 0.08);
+    --shadow-brand: 0 4px 16px -4px hsl(217 91% 35% / 0.35), 0 2px 6px -2px hsl(217 91% 35% / 0.20);
 
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 222 25% 11%;
