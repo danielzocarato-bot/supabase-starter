@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
@@ -6,6 +6,8 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -15,8 +17,9 @@ import {
 import {
   Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
 } from "@/components/ui/command";
-import { ArrowDownToLine, ArrowUpFromLine, ChevronsUpDown } from "lucide-react";
+import { ArrowDownToLine, ArrowUpFromLine, ChevronsUpDown, Loader2, Pencil, X } from "lucide-react";
 import { formatCNPJ } from "@/lib/format";
+import { toast } from "sonner";
 
 export type DrawerNota = {
   id: string;
@@ -49,6 +52,21 @@ export type DrawerAcumulador = {
   descricao: string;
 };
 
+export type PatchNota = {
+  prestador_razao?: string | null;
+  prestador_cnpj?: string | null;
+  numero_nfe?: string | null;
+  emissao_nfe?: string | null;
+  valor_nfe?: number | null;
+  observacao?: string | null;
+};
+
+export type PatchItem = {
+  descricao_produto?: string | null;
+  cfop?: string | null;
+  valor?: number | null;
+};
+
 function formatBRL(v: number | null | undefined) {
   if (v == null) return "—";
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(v));
@@ -61,6 +79,11 @@ function formatDateBR(d: string | null | undefined) {
 }
 function normalize(s: string) {
   return (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+function parseValor(s: string): number | null {
+  if (!s.trim()) return null;
+  const n = Number(s.replace(/\./g, "").replace(",", "."));
+  return isFinite(n) ? n : null;
 }
 
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
@@ -134,16 +157,18 @@ function AcumuladorCombobox({
 }
 
 export function NotaDrawerNFe({
-  nota, itens, acumuladores, readOnly, pisca,
-  onClose, onClassificarItem,
+  nota, itens, acumuladores, readOnly, pisca, permitirEditarItem,
+  onClose, onClassificarItem, onSalvarDados,
 }: {
   nota: DrawerNota | null;
   itens: DrawerItem[];
   acumuladores: DrawerAcumulador[];
   readOnly: boolean;
   pisca: Set<string>;
+  permitirEditarItem?: boolean;
   onClose: () => void;
   onClassificarItem: (itemId: string, acumuladorId: string | null) => void;
+  onSalvarDados?: (notaId: string, patchNota: PatchNota, patchItem?: PatchItem) => Promise<void>;
 }) {
   const open = !!nota;
 
@@ -157,6 +182,70 @@ export function NotaDrawerNFe({
   const tipoLabel = tipoSaida ? "Saída" : "Entrada";
   const parceiroLabel = tipoSaida ? "Destinatário" : "Emitente";
   const serie = nota?.raw_data?.serie ?? nota?.raw_data?.ide?.serie ?? null;
+
+  const podeEditar =
+    !!onSalvarDados && !readOnly && !!nota && !nota.cancelada;
+
+  // Quando há um único item, permite editar também os campos do item (descrição/CFOP/valor)
+  const itemUnico = (permitirEditarItem ?? itens.length === 1) ? itens[0] : null;
+
+  const [editMode, setEditMode] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    prestador_razao: "",
+    prestador_cnpj: "",
+    numero_nfe: "",
+    emissao_nfe: "",
+    valor_nfe: "",
+    descricao: "",
+    cfop: "",
+  });
+
+  // Reset edit mode/form when nota changes or drawer closes
+  useEffect(() => {
+    if (!nota) {
+      setEditMode(false);
+      return;
+    }
+    setForm({
+      prestador_razao: nota.prestador_razao ?? "",
+      prestador_cnpj: (nota.prestador_cnpj ?? "").replace(/\D/g, ""),
+      numero_nfe: nota.numero_nfe ?? "",
+      emissao_nfe: nota.emissao_nfe ?? "",
+      valor_nfe: nota.valor_nfe != null ? String(nota.valor_nfe).replace(".", ",") : "",
+      descricao: itemUnico?.descricao_produto ?? "",
+      cfop: itemUnico?.cfop ?? "",
+    });
+  }, [nota?.id, editMode]);
+
+  const handleSalvar = async () => {
+    if (!nota || !onSalvarDados) return;
+    setSaving(true);
+    try {
+      const valor = parseValor(form.valor_nfe);
+      const patchNota: PatchNota = {
+        prestador_razao: form.prestador_razao.trim() || null,
+        prestador_cnpj: form.prestador_cnpj ? form.prestador_cnpj.replace(/\D/g, "") : null,
+        numero_nfe: form.numero_nfe.trim() || null,
+        emissao_nfe: form.emissao_nfe || null,
+        valor_nfe: valor,
+      };
+      const patchItem: PatchItem | undefined = itemUnico
+        ? {
+            descricao_produto: form.descricao.trim() || null,
+            cfop: form.cfop.trim() || null,
+            valor: valor,
+          }
+        : undefined;
+      await onSalvarDados(nota.id, patchNota, patchItem);
+      toast.success("Dados atualizados");
+      setEditMode(false);
+    } catch (e: any) {
+      toast.error("Falha ao salvar", { description: e?.message ?? String(e) });
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <Sheet open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
@@ -187,35 +276,136 @@ export function NotaDrawerNFe({
               </TabsList>
 
               <TabsContent value="resumo" className="flex-1 overflow-y-auto px-6 pb-6 mt-2 space-y-5">
-                <div className="grid grid-cols-2 gap-4">
-                  <Field label="Número" value={nota.numero_nfe} />
-                  <Field label="Série" value={serie} />
-                  <Field label="Emissão" value={formatDateBR(nota.emissao_nfe)} />
-                  <Field label="Tipo" value={tipoLabel} />
-                  <Field label={parceiroLabel} value={
-                    <div className="space-y-0.5">
-                      <div>{nota.prestador_razao ?? "—"}</div>
-                      <div className="text-xs text-muted-foreground font-mono">{formatCNPJ(nota.prestador_cnpj)}</div>
-                    </div>
-                  } />
-                  <Field label="Status" value={nota.cancelada ? "Cancelada" : "Ativa"} />
-                  <Field label="Valor total" value={
-                    <span className="tabular-nums">{formatBRL(nota.valor_nfe)}</span>
-                  } />
-                  <Field label="Valor classificado" value={
-                    <span className="tabular-nums">{formatBRL(valorClassificado)}</span>
-                  } />
-                </div>
-                {nota.chave_nfe && (
-                  <Field label="Chave de acesso" value={
-                    <span className="font-mono text-xs break-all">{nota.chave_nfe}</span>
-                  } />
-                )}
-                {nota.observacao && (
-                  <div className="rounded-lg border bg-muted/30 p-3 space-y-1">
-                    <div className="text-xs uppercase tracking-wide text-muted-foreground">Observação</div>
-                    <div className="text-sm whitespace-pre-wrap">{nota.observacao}</div>
+                {podeEditar && (
+                  <div className="flex justify-end">
+                    {editMode ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setEditMode(false)}
+                        disabled={saving}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                        Cancelar
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setEditMode(true)}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                        Editar dados
+                      </Button>
+                    )}
                   </div>
+                )}
+
+                {editMode ? (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="col-span-2 space-y-1">
+                        <Label className="text-xs">{parceiroLabel}</Label>
+                        <Input
+                          value={form.prestador_razao}
+                          onChange={(e) => setForm((f) => ({ ...f, prestador_razao: e.target.value }))}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">CNPJ</Label>
+                        <Input
+                          value={form.prestador_cnpj}
+                          onChange={(e) => setForm((f) => ({ ...f, prestador_cnpj: e.target.value.replace(/\D/g, "").slice(0, 14) }))}
+                          inputMode="numeric"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Número</Label>
+                        <Input
+                          value={form.numero_nfe}
+                          onChange={(e) => setForm((f) => ({ ...f, numero_nfe: e.target.value }))}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Emissão</Label>
+                        <Input
+                          type="date"
+                          value={form.emissao_nfe}
+                          onChange={(e) => setForm((f) => ({ ...f, emissao_nfe: e.target.value }))}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Valor total</Label>
+                        <Input
+                          value={form.valor_nfe}
+                          onChange={(e) => setForm((f) => ({ ...f, valor_nfe: e.target.value }))}
+                          inputMode="decimal"
+                          placeholder="0,00"
+                        />
+                      </div>
+                      {itemUnico && (
+                        <>
+                          <div className="col-span-2 space-y-1">
+                            <Label className="text-xs">Descrição</Label>
+                            <Input
+                              value={form.descricao}
+                              onChange={(e) => setForm((f) => ({ ...f, descricao: e.target.value }))}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">CFOP</Label>
+                            <Input
+                              value={form.cfop}
+                              onChange={(e) => setForm((f) => ({ ...f, cfop: e.target.value.replace(/\D/g, "").slice(0, 4) }))}
+                              inputMode="numeric"
+                            />
+                          </div>
+                        </>
+                      )}
+                    </div>
+                    <div className="flex justify-end gap-2 pt-2">
+                      <Button variant="ghost" size="sm" onClick={() => setEditMode(false)} disabled={saving}>
+                        Cancelar
+                      </Button>
+                      <Button size="sm" onClick={handleSalvar} disabled={saving}>
+                        {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+                        Salvar
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-2 gap-4">
+                      <Field label="Número" value={nota.numero_nfe} />
+                      <Field label="Série" value={serie} />
+                      <Field label="Emissão" value={formatDateBR(nota.emissao_nfe)} />
+                      <Field label="Tipo" value={tipoLabel} />
+                      <Field label={parceiroLabel} value={
+                        <div className="space-y-0.5">
+                          <div>{nota.prestador_razao ?? "—"}</div>
+                          <div className="text-xs text-muted-foreground font-mono">{formatCNPJ(nota.prestador_cnpj)}</div>
+                        </div>
+                      } />
+                      <Field label="Status" value={nota.cancelada ? "Cancelada" : "Ativa"} />
+                      <Field label="Valor total" value={
+                        <span className="tabular-nums">{formatBRL(nota.valor_nfe)}</span>
+                      } />
+                      <Field label="Valor classificado" value={
+                        <span className="tabular-nums">{formatBRL(valorClassificado)}</span>
+                      } />
+                    </div>
+                    {nota.chave_nfe && (
+                      <Field label="Chave de acesso" value={
+                        <span className="font-mono text-xs break-all">{nota.chave_nfe}</span>
+                      } />
+                    )}
+                    {nota.observacao && (
+                      <div className="rounded-lg border bg-muted/30 p-3 space-y-1">
+                        <div className="text-xs uppercase tracking-wide text-muted-foreground">Observação</div>
+                        <div className="text-sm whitespace-pre-wrap">{nota.observacao}</div>
+                      </div>
+                    )}
+                  </>
                 )}
               </TabsContent>
 
