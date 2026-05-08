@@ -11,8 +11,8 @@
     --brand-soft: 217 90% 96%;
     --brand-ring: 217 91% 60%;
 
-    --background: 210 20% 99%;
-    --foreground: 222 25% 11%;
+    --background: 220 25% 99%;
+    --foreground: 222 30% 11%;
 
     --muted: 220 14% 96%;
     --muted-foreground: 215 16% 47%;
@@ -36,15 +36,22 @@
     --accent: 217 90% 96%;
     --accent-foreground: 217 91% 35%;
 
-    --success: 152 61% 41%;
-    --warning: 38 92% 50%;
-    --danger: 0 72% 51%;
-    --info: 217 91% 60%;
+    --success: 162 65% 38%;
+    --warning: 32 95% 52%;
+    --danger: 350 78% 52%;
+    --info: 199 89% 48%;
+    --accent-deep: 235 65% 50%;
+    --accent-deep-foreground: 0 0% 100%;
 
-    --destructive: 0 72% 51%;
+    --destructive: 350 78% 52%;
     --destructive-foreground: 0 0% 100%;
 
     --radius: 0.75rem;
+
+    --shadow-soft: 0 1px 2px 0 hsl(220 25% 11% / 0.04), 0 1px 3px 0 hsl(220 25% 11% / 0.06);
+    --shadow-md: 0 4px 8px -2px hsl(220 25% 11% / 0.08), 0 2px 4px -1px hsl(220 25% 11% / 0.06);
+    --shadow-lg: 0 12px 24px -6px hsl(220 25% 11% / 0.12), 0 4px 8px -2px hsl(220 25% 11% / 0.08);
+    --shadow-brand: 0 4px 16px -4px hsl(217 91% 35% / 0.35), 0 2px 6px -2px hsl(217 91% 35% / 0.20);
 
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 222 25% 11%;
@@ -87,8 +94,20 @@
     --accent: 217 50% 14%;
     --accent-foreground: 217 91% 60%;
 
-    --destructive: 0 72% 51%;
+    --destructive: 350 75% 60%;
     --destructive-foreground: 0 0% 100%;
+
+    --success: 162 60% 50%;
+    --warning: 32 90% 60%;
+    --danger: 350 75% 60%;
+    --info: 199 85% 60%;
+    --accent-deep: 235 65% 65%;
+    --accent-deep-foreground: 222 30% 7%;
+
+    --shadow-soft: 0 1px 2px 0 hsl(0 0% 0% / 0.20), 0 1px 3px 0 hsl(0 0% 0% / 0.25);
+    --shadow-md: 0 4px 8px -2px hsl(0 0% 0% / 0.30), 0 2px 4px -1px hsl(0 0% 0% / 0.25);
+    --shadow-lg: 0 12px 24px -6px hsl(0 0% 0% / 0.40), 0 4px 8px -2px hsl(0 0% 0% / 0.30);
+    --shadow-brand: 0 4px 16px -4px hsl(217 91% 60% / 0.40), 0 2px 6px -2px hsl(217 91% 60% / 0.25);
 
     --sidebar-background: 222 30% 9%;
     --sidebar-foreground: 210 20% 96%;
@@ -106,9 +125,17 @@
   body {
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "cv11", "ss01";
+    background-image:
+      radial-gradient(at 0% 0%, hsl(var(--brand) / 0.04) 0%, transparent 50%),
+      radial-gradient(at 100% 100%, hsl(var(--info) / 0.03) 0%, transparent 50%);
+    background-attachment: fixed;
   }
-  h1, h2, h3, h4 {
-    font-family: 'Inter Tight', 'Inter', sans-serif;
-    letter-spacing: -0.01em;
+  .dark body {
+    background-image:
+      radial-gradient(at 0% 0%, hsl(var(--brand) / 0.08) 0%, transparent 50%),
+      radial-gradient(at 100% 100%, hsl(var(--info) / 0.05) 0%, transparent 50%);
   }
+  h1 { font-family: 'Inter Tight', 'Inter', sans-serif; letter-spacing: -0.025em; font-weight: 600; }
+  h2 { font-family: 'Inter Tight', 'Inter', sans-serif; letter-spacing: -0.02em; font-weight: 600; }
+  h3, h4 { font-family: 'Inter Tight', 'Inter', sans-serif; letter-spacing: -0.015em; font-weight: 600; }
 }

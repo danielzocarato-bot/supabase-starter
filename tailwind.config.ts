@@ -33,6 +33,10 @@ export default {
         warning: "hsl(var(--warning))",
         danger: "hsl(var(--danger))",
         info: "hsl(var(--info))",
+        "accent-deep": {
+          DEFAULT: "hsl(var(--accent-deep))",
+          foreground: "hsl(var(--accent-deep-foreground))",
+        },
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
@@ -76,6 +80,10 @@ export default {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+      },
+      boxShadow: {
+        soft: "var(--shadow-soft)",
+        brand: "var(--shadow-brand)",
       },
       keyframes: {
         "accordion-down": {
