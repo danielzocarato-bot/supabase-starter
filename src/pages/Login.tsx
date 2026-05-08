@@ -141,7 +141,7 @@ export default function Login() {
         <div className="mb-8 flex justify-center">
           <AcruxLogo />
         </div>
-        <Card className="p-8 rounded-xl border shadow-sm">
+        <Card className="p-8 rounded-xl border shadow-brand backdrop-blur-sm bg-card/95">
           <h1 className="text-2xl font-display font-semibold mb-1">
             {mode === "login" ? "Entrar" : mode === "forgot" ? "Recuperar acesso" : "Criar conta inicial"}
           </h1>
