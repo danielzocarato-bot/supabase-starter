@@ -11,19 +11,44 @@ import {
 
 interface NavItem { to: string; label: string; icon: any; }
 
-const navEscritorio: NavItem[] = [
-  { to: "/app/escritorio", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/app/escritorio/clientes", label: "Clientes", icon: Users },
-  { to: "/app/escritorio/importar", label: "Importar Planilha", icon: Upload },
-  { to: "/app/escritorio/importar-xmls", label: "Importar XMLs", icon: FileCode2 },
-  { to: "/app/escritorio/upload-documentos", label: "Upload Documentos", icon: FileScan },
-  { to: "/app/escritorio/usuarios", label: "Usuários", icon: UserCircle },
-  { to: "/app/escritorio/configuracoes", label: "Configurações", icon: Settings },
+const navEscritorio: { label: string; items: NavItem[] }[] = [
+  {
+    label: "Operações",
+    items: [
+      { to: "/app/escritorio", label: "Dashboard", icon: LayoutDashboard },
+      { to: "/app/escritorio/importar", label: "Importar Planilha", icon: Upload },
+      { to: "/app/escritorio/importar-xmls", label: "Importar XMLs", icon: FileCode2 },
+      { to: "/app/escritorio/upload-documentos", label: "Upload Documentos", icon: FileScan },
+    ],
+  },
+  {
+    label: "Cadastros",
+    items: [
+      { to: "/app/escritorio/clientes", label: "Clientes", icon: Users },
+      { to: "/app/escritorio/usuarios", label: "Usuários", icon: UserCircle },
+    ],
+  },
+  {
+    label: "Sistema",
+    items: [
+      { to: "/app/escritorio/configuracoes", label: "Configurações", icon: Settings },
+    ],
+  },
 ];
 
-const navCliente: NavItem[] = [
-  { to: "/app/cliente", label: "Minhas Competências", icon: FileText },
-  { to: "/app/cliente/cadastro", label: "Meu Cadastro", icon: UserCircle },
+const navCliente: { label: string; items: NavItem[] }[] = [
+  {
+    label: "Operações",
+    items: [
+      { to: "/app/cliente", label: "Minhas Competências", icon: FileText },
+    ],
+  },
+  {
+    label: "Cadastros",
+    items: [
+      { to: "/app/cliente/cadastro", label: "Meu Cadastro", icon: UserCircle },
+    ],
+  },
 ];
 
 export const AppShell = ({ children }: { children: ReactNode }) => {
