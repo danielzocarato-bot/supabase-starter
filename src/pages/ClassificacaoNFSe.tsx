@@ -1024,7 +1024,7 @@ export default function ClassificacaoNFSe() {
                           : { backgroundColor: "hsl(var(--success) / 0)" }
                       }
                       transition={{ duration: 0.6, ease: "easeOut" }}
-                      className={`border-b last:border-b-0 transition-opacity hover:bg-muted/30 cursor-pointer ${
+                      className={`border-b last:border-b-0 transition-colors hover:bg-muted/40 cursor-pointer ${
                         n.cancelada ? "opacity-60" : ""
                       }`}
                       onClick={(e) => {
