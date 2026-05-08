@@ -1442,7 +1442,79 @@ function AcumuladorCombobox({
 }
 
 // ---------- Drawer ----------
-function NotaDrawer({ nota, onClose }: { nota: Nota | null; onClose: () => void }) {
+function NotaDrawer({
+  nota, onClose, readOnly, onSalvar,
+}: {
+  nota: Nota | null;
+  onClose: () => void;
+  readOnly?: boolean;
+  onSalvar?: (notaId: string, patch: Partial<Nota>) => Promise<void>;
+}) {
+  const [editMode, setEditMode] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    prestador_razao: "",
+    prestador_cnpj: "",
+    prestador_municipio: "",
+    prestador_uf: "",
+    prestador_endereco: "",
+    numero_nfe: "",
+    emissao_nfe: "",
+    valor_nfe: "",
+    servico_municipal: "",
+    observacao: "",
+  });
+
+  useEffect(() => {
+    if (!nota) {
+      setEditMode(false);
+      return;
+    }
+    setForm({
+      prestador_razao: nota.prestador_razao ?? "",
+      prestador_cnpj: (nota.prestador_cnpj ?? "").replace(/\D/g, ""),
+      prestador_municipio: nota.prestador_municipio ?? "",
+      prestador_uf: nota.prestador_uf ?? "",
+      prestador_endereco: nota.prestador_endereco ?? "",
+      numero_nfe: nota.numero_nfe ?? "",
+      emissao_nfe: nota.emissao_nfe ?? "",
+      valor_nfe: nota.valor_nfe != null ? String(nota.valor_nfe).replace(".", ",") : "",
+      servico_municipal: nota.servico_municipal ?? "",
+      observacao: nota.observacao ?? "",
+    });
+  }, [nota?.id, editMode]);
+
+  const podeEditar = !!onSalvar && !readOnly && !!nota && !nota.cancelada;
+
+  const handleSalvar = async () => {
+    if (!nota || !onSalvar) return;
+    setSaving(true);
+    try {
+      const valorRaw = form.valor_nfe.trim();
+      const valor = valorRaw ? Number(valorRaw.replace(/\./g, "").replace(",", ".")) : null;
+      const patch: Partial<Nota> = {
+        prestador_razao: form.prestador_razao.trim() || null,
+        prestador_cnpj: form.prestador_cnpj ? form.prestador_cnpj.replace(/\D/g, "") : null,
+        prestador_municipio: form.prestador_municipio.trim() || null,
+        prestador_uf: form.prestador_uf.trim().toUpperCase().slice(0, 2) || null,
+        prestador_endereco: form.prestador_endereco.trim() || null,
+        numero_nfe: form.numero_nfe.trim() || null,
+        emissao_nfe: form.emissao_nfe || null,
+        valor_nfe: valor != null && isFinite(valor) ? valor : null,
+        valor_contabil: valor != null && isFinite(valor) ? valor : null,
+        servico_municipal: form.servico_municipal.trim() || null,
+        observacao: form.observacao.trim() || null,
+      };
+      await onSalvar(nota.id, patch);
+      toast.success("Dados atualizados");
+      setEditMode(false);
+    } catch (e: any) {
+      toast.error("Falha ao salvar", { description: e?.message ?? String(e) });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <Sheet open={!!nota} onOpenChange={(o) => { if (!o) onClose(); }}>
       <SheetContent side="right" className="w-full sm:max-w-[480px] overflow-y-auto">
@@ -1465,25 +1537,114 @@ function NotaDrawer({ nota, onClose }: { nota: Nota | null; onClose: () => void 
                 {nota.cancelada && (
                   <Badge variant="outline" className="bg-muted text-muted-foreground">CANCELADA</Badge>
                 )}
-                <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
-                  <Field label="Emissão" value={formatDateBR(nota.emissao_nfe)} />
-                  <Field label="Data Competência" value={formatDateBR(nota.data_competencia)} />
-                  <Field label="Prestador" value={nota.prestador_razao} fullCol />
-                  <Field label="CNPJ" value={formatCNPJ(nota.prestador_cnpj)} />
-                  <Field label="Município" value={nota.prestador_municipio} />
-                  <Field label="UF" value={nota.prestador_uf} />
-                  <Field label="Endereço" value={nota.prestador_endereco} fullCol />
-                  <Field label="CNAE" value={nota.cnae_descricao} fullCol />
-                  <Field label="Serviço Municipal" value={nota.servico_municipal} fullCol />
-                  <Field label="Valor NFe" value={formatBRL(nota.valor_nfe)} />
-                  <Field label="Desconto" value={formatBRL(nota.desconto)} />
-                  <Field label="Valor Contábil" value={formatBRL(nota.valor_contabil)} />
-                </div>
-                {nota.observacao && (
-                  <div className="mt-4 p-3 rounded-lg bg-brand-soft/40 border border-brand/15">
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1">Observação</p>
-                    <p className="text-sm whitespace-pre-wrap">{nota.observacao}</p>
+
+                {podeEditar && (
+                  <div className="flex justify-end">
+                    {editMode ? (
+                      <Button variant="ghost" size="sm" onClick={() => setEditMode(false)} disabled={saving}>
+                        <X className="h-3.5 w-3.5" /> Cancelar
+                      </Button>
+                    ) : (
+                      <Button variant="outline" size="sm" onClick={() => setEditMode(true)}>
+                        Editar dados
+                      </Button>
+                    )}
                   </div>
+                )}
+
+                {editMode ? (
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Prestador</Label>
+                      <Input value={form.prestador_razao} onChange={(e) => setForm((f) => ({ ...f, prestador_razao: e.target.value }))} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs">CNPJ</Label>
+                        <Input
+                          value={form.prestador_cnpj}
+                          inputMode="numeric"
+                          onChange={(e) => setForm((f) => ({ ...f, prestador_cnpj: e.target.value.replace(/\D/g, "").slice(0, 14) }))}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Número NF</Label>
+                        <Input value={form.numero_nfe} onChange={(e) => setForm((f) => ({ ...f, numero_nfe: e.target.value }))} />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Município</Label>
+                        <Input value={form.prestador_municipio} onChange={(e) => setForm((f) => ({ ...f, prestador_municipio: e.target.value }))} />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">UF</Label>
+                        <Input
+                          value={form.prestador_uf}
+                          onChange={(e) => setForm((f) => ({ ...f, prestador_uf: e.target.value.toUpperCase().slice(0, 2) }))}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Emissão</Label>
+                        <Input
+                          type="date"
+                          value={form.emissao_nfe}
+                          onChange={(e) => setForm((f) => ({ ...f, emissao_nfe: e.target.value }))}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Valor</Label>
+                        <Input
+                          value={form.valor_nfe}
+                          inputMode="decimal"
+                          placeholder="0,00"
+                          onChange={(e) => setForm((f) => ({ ...f, valor_nfe: e.target.value }))}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Endereço</Label>
+                      <Input value={form.prestador_endereco} onChange={(e) => setForm((f) => ({ ...f, prestador_endereco: e.target.value }))} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Serviço Municipal</Label>
+                      <Input value={form.servico_municipal} onChange={(e) => setForm((f) => ({ ...f, servico_municipal: e.target.value }))} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Observação</Label>
+                      <Input value={form.observacao} onChange={(e) => setForm((f) => ({ ...f, observacao: e.target.value }))} />
+                    </div>
+                    <div className="flex justify-end gap-2 pt-2">
+                      <Button variant="ghost" size="sm" onClick={() => setEditMode(false)} disabled={saving}>
+                        Cancelar
+                      </Button>
+                      <Button size="sm" onClick={handleSalvar} disabled={saving}>
+                        {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+                        Salvar
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                      <Field label="Emissão" value={formatDateBR(nota.emissao_nfe)} />
+                      <Field label="Data Competência" value={formatDateBR(nota.data_competencia)} />
+                      <Field label="Prestador" value={nota.prestador_razao} fullCol />
+                      <Field label="CNPJ" value={formatCNPJ(nota.prestador_cnpj)} />
+                      <Field label="Município" value={nota.prestador_municipio} />
+                      <Field label="UF" value={nota.prestador_uf} />
+                      <Field label="Endereço" value={nota.prestador_endereco} fullCol />
+                      <Field label="CNAE" value={nota.cnae_descricao} fullCol />
+                      <Field label="Serviço Municipal" value={nota.servico_municipal} fullCol />
+                      <Field label="Valor NFe" value={formatBRL(nota.valor_nfe)} />
+                      <Field label="Desconto" value={formatBRL(nota.desconto)} />
+                      <Field label="Valor Contábil" value={formatBRL(nota.valor_contabil)} />
+                    </div>
+                    {nota.observacao && (
+                      <div className="mt-4 p-3 rounded-lg bg-brand-soft/40 border border-brand/15">
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1">Observação</p>
+                        <p className="text-sm whitespace-pre-wrap">{nota.observacao}</p>
+                      </div>
+                    )}
+                  </>
                 )}
               </TabsContent>
               <TabsContent value="tributacao" className="pt-4">
