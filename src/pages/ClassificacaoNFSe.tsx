@@ -1086,6 +1086,17 @@ export default function ClassificacaoNFSe() {
         <NotaDrawer
           nota={drawerNota}
           onClose={() => setDrawerNotaId(null)}
+          readOnly={readOnly}
+          onSalvar={async (notaId, patch) => {
+            const { error } = await supabase
+              .from("notas_fiscais")
+              .update(patch as any)
+              .eq("id", notaId);
+            if (error) throw new Error(error.message);
+            setNotas((prev) =>
+              prev.map((n) => (n.id === notaId ? { ...n, ...(patch as any) } : n)),
+            );
+          }}
         />
 
         {/* Confirmar conclusão */}
