@@ -33,6 +33,10 @@ export default {
         warning: "hsl(var(--warning))",
         danger: "hsl(var(--danger))",
         info: "hsl(var(--info))",
+        "accent-deep": {
+          DEFAULT: "hsl(var(--accent-deep))",
+          foreground: "hsl(var(--accent-deep-foreground))",
+        },
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
