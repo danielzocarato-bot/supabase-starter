@@ -815,7 +815,7 @@ export default function ClassificacaoNFSe() {
                     >
                       <Button
                         size="lg"
-                        className="bg-brand text-brand-foreground hover:bg-brand/90"
+                        className="bg-brand text-brand-foreground hover:bg-brand/90 shadow-brand hover:shadow-md transition-all"
                         onClick={() => setConfirmConcluirOpen(true)}
                       >
                         Concluir competência
