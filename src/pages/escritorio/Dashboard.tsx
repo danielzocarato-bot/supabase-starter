@@ -81,19 +81,36 @@ function saudacao() {
 }
 
 function StatCard({
-  icon: Icon, label, value, highlight,
-}: { icon: any; label: string; value: number; highlight?: boolean }) {
+  icon: Icon, label, value, tone = "brand", highlight,
+}: {
+  icon: any;
+  label: string;
+  value: number;
+  tone?: "brand" | "warning" | "info" | "success";
+  highlight?: boolean;
+}) {
+  const toneClasses = {
+    brand:   { iconBg: "bg-brand/10",   iconColor: "text-brand",   labelColor: "text-brand",   valueColor: "text-brand" },
+    warning: { iconBg: "bg-warning/10", iconColor: "text-warning", labelColor: "text-warning", valueColor: "text-foreground" },
+    info:    { iconBg: "bg-info/10",    iconColor: "text-info",    labelColor: "text-info",    valueColor: "text-foreground" },
+    success: { iconBg: "bg-success/10", iconColor: "text-success", labelColor: "text-success", valueColor: "text-success" },
+  }[tone];
+
+  const isHighlight = highlight && value > 0;
+
   return (
     <Card
-      className={`p-6 rounded-xl ${
-        highlight ? "bg-brand-soft border-brand/30" : ""
+      className={`p-6 rounded-xl transition-all ${
+        isHighlight ? "ring-1 ring-brand/30 shadow-brand" : "hover:shadow-md"
       }`}
     >
       <div className="flex items-center justify-between mb-3">
-        <span className={`text-sm ${highlight ? "text-brand" : "text-muted-foreground"}`}>{label}</span>
-        <Icon className={`h-4 w-4 ${highlight ? "text-brand" : "text-brand"}`} strokeWidth={1.5} />
+        <span className={`text-sm font-medium ${toneClasses.labelColor}`}>{label}</span>
+        <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${toneClasses.iconBg}`}>
+          <Icon className={`h-4 w-4 ${toneClasses.iconColor}`} strokeWidth={1.75} />
+        </div>
       </div>
-      <p className={`text-3xl font-display font-semibold tabular-nums ${highlight ? "text-brand" : ""}`}>
+      <p className={`text-3xl font-display font-semibold tabular-nums ${toneClasses.valueColor}`}>
         {value}
       </p>
     </Card>
