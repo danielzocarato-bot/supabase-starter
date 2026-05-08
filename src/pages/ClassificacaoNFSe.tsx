@@ -828,6 +828,25 @@ export default function ClassificacaoNFSe() {
           </div>
         </div>
 
+        {competencia.status === "concluida" && profile?.role === "escritorio" && (
+          <div className="rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 flex items-center justify-between gap-4 flex-wrap">
+            <p className="text-sm">
+              <strong>Competência concluída.</strong>{" "}
+              <span className="text-muted-foreground">
+                Para corrigir uma classificação ou editar dados de uma nota, reabra a competência.
+              </span>
+            </p>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setConfirmReabrirOpen(true)}
+            >
+              <Undo2 className="h-3.5 w-3.5" />
+              Reabrir competência
+            </Button>
+          </div>
+        )}
+
         {/* Filtros + busca */}
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-2">
