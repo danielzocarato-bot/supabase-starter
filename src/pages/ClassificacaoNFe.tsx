@@ -1541,7 +1541,7 @@ function GrupoCfopCard({
                           : { backgroundColor: "hsl(var(--success) / 0)" }
                       }
                       transition={{ duration: 0.6, ease: "easeOut" }}
-                      className="border-b last:border-b-0 hover:bg-muted/30"
+                      className="border-b last:border-b-0 transition-colors hover:bg-muted/40"
                     >
                       <TableCell className="font-medium tabular-nums whitespace-nowrap">
                         {i.nota_numero ?? "—"}
