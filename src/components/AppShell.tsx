@@ -71,36 +71,45 @@ export const AppShell = ({ children }: { children: ReactNode }) => {
           <AcruxLogo />
         </div>
 
-        <nav className="flex-1 p-3 space-y-1">
-          {items.map((item) => {
-            const active = loc.pathname === item.to || (item.to !== "/app/escritorio" && item.to !== "/app/cliente" && loc.pathname.startsWith(item.to));
-            const Icon = item.icon;
-            return (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.to === "/app/escritorio" || item.to === "/app/cliente"}
-                className={({ isActive }) => {
-                  const isAct = isActive || active;
-                  return `relative flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    isAct
-                      ? "bg-brand-soft text-brand"
-                      : "text-foreground/80 hover:bg-muted hover:text-foreground"
-                  }`;
-                }}
-              >
-                {({ isActive }) => (
-                  <>
-                    {(isActive || active) && (
-                      <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-r bg-brand" />
-                    )}
-                    <Icon className="h-[18px] w-[18px]" strokeWidth={1.5} />
-                    <span>{item.label}</span>
-                  </>
-                )}
-              </NavLink>
-            );
-          })}
+        <nav className="flex-1 p-3 space-y-5 overflow-y-auto">
+          {items.map((section) => (
+            <div key={section.label}>
+              <p className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                {section.label}
+              </p>
+              <div className="space-y-0.5">
+                {section.items.map((item) => {
+                  const active = loc.pathname === item.to || (item.to !== "/app/escritorio" && item.to !== "/app/cliente" && loc.pathname.startsWith(item.to));
+                  const Icon = item.icon;
+                  return (
+                    <NavLink
+                      key={item.to}
+                      to={item.to}
+                      end={item.to === "/app/escritorio" || item.to === "/app/cliente"}
+                      className={({ isActive }) => {
+                        const isAct = isActive || active;
+                        return `relative flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                          isAct
+                            ? "bg-brand-soft text-brand"
+                            : "text-foreground/80 hover:bg-muted hover:text-foreground hover:translate-x-0.5"
+                        }`;
+                      }}
+                    >
+                      {({ isActive }) => (
+                        <>
+                          {(isActive || active) && (
+                            <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-r bg-brand" />
+                          )}
+                          <Icon className="h-[18px] w-[18px]" strokeWidth={1.5} />
+                          <span>{item.label}</span>
+                        </>
+                      )}
+                    </NavLink>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
 
         <div className="p-3 border-t border-border space-y-2">
