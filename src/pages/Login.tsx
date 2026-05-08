@@ -183,7 +183,7 @@ export default function Login() {
               </div>
             )}
 
-            <Button type="submit" disabled={loading} className="w-full bg-brand text-brand-foreground hover:bg-brand/90 h-10">
+            <Button type="submit" disabled={loading} className="w-full bg-brand text-brand-foreground hover:bg-brand/90 h-11 shadow-brand transition-all hover:shadow-md">
               {loading && <Loader2 className="h-4 w-4 animate-spin" />}
               {loading
                 ? "Processando…"
