@@ -757,8 +757,8 @@ export default function ClassificacaoNFSe() {
                     {exportando
                       ? "Processando…"
                       : competencia.status === "exportada"
-                        ? "Re-exportar TXT"
-                        : "Exportar TXT Domínio"}
+                        ? "Gerar nova versão do TXT"
+                        : "Gerar TXT Domínio"}
                   </Button>
                 )}
                 {profile?.role === "escritorio" && (
@@ -828,12 +828,19 @@ export default function ClassificacaoNFSe() {
           </div>
         </div>
 
-        {competencia.status === "concluida" && profile?.role === "escritorio" && (
-          <div className="rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 flex items-center justify-between gap-4 flex-wrap">
-            <p className="text-sm">
-              <strong>Competência concluída.</strong>{" "}
+        {(competencia.status === "concluida" || competencia.status === "exportada") && profile?.role === "escritorio" && (
+          <div className="rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 flex items-start justify-between gap-4 flex-wrap">
+            <p className="text-sm max-w-3xl">
+              <strong>
+                {competencia.status === "exportada" ? "Competência exportada." : "Competência concluída."}
+              </strong>{" "}
               <span className="text-muted-foreground">
-                Para corrigir uma classificação ou editar dados de uma nota, reabra a competência.
+                Para ajustar a classificação de uma ou mais notas, reabra a competência.{" "}
+                <strong className="text-foreground font-medium">As demais notas continuam com a classificação atual</strong>
+                {" "}— só o que você editar muda. Depois é só concluir{" "}
+                {competencia.status === "exportada"
+                  ? "e gerar uma nova versão do TXT (a anterior fica no histórico de exportações)."
+                  : "e gerar um novo TXT."}
               </span>
             </p>
             <Button
@@ -1148,8 +1155,12 @@ export default function ClassificacaoNFSe() {
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Reabrir esta competência?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Os usuários cliente poderão classificar novamente.
+              <AlertDialogDescription asChild>
+                <div className="space-y-2 text-sm text-muted-foreground">
+                  <p>Todas as notas já classificadas <strong className="text-foreground font-medium">mantêm a classificação atual</strong>.</p>
+                  <p>Você poderá editar apenas as notas que quiser.</p>
+                  <p>Depois é só concluir novamente e gerar um novo TXT — o arquivo anterior continua disponível no histórico de exportações.</p>
+                </div>
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -1160,7 +1171,7 @@ export default function ClassificacaoNFSe() {
                 className="bg-brand text-brand-foreground hover:bg-brand/90"
               >
                 {acaoLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-                Reabrir
+                Reabrir competência
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
