@@ -135,7 +135,7 @@ function AtencaoRowItem({ row, onClick }: { row: AtencaoRow; onClick: () => void
   return (
     <button
       onClick={onClick}
-      className="w-full flex items-center gap-4 px-4 py-3 rounded-lg hover:bg-muted/50 transition-colors text-left border border-transparent hover:border-border"
+      className="w-full flex items-center gap-4 px-4 py-3 rounded-lg hover:bg-muted/50 hover:shadow-soft hover:-translate-y-0.5 transition-all text-left border border-transparent hover:border-brand/30"
     >
       <MotivoIcon motivo={row.motivo} />
       <div className="flex-1 min-w-0">
@@ -186,9 +186,9 @@ function ShortcutCard({
   return (
     <button
       onClick={onClick}
-      className="text-left p-5 rounded-xl border bg-card hover:border-brand/40 hover:shadow-sm transition-all flex items-start gap-4 group"
+      className="text-left p-5 rounded-xl border bg-card shadow-soft hover:border-brand/40 hover:shadow-md hover:-translate-y-0.5 transition-all flex items-start gap-4 group"
     >
-      <div className="h-10 w-10 rounded-lg bg-brand-soft flex items-center justify-center flex-shrink-0 group-hover:bg-brand/15">
+      <div className="h-10 w-10 rounded-lg bg-brand-soft flex items-center justify-center flex-shrink-0 group-hover:bg-brand/15 group-hover:scale-110 transition-transform">
         <Icon className="h-5 w-5 text-brand" strokeWidth={1.5} />
       </div>
       <div className="min-w-0">
@@ -236,7 +236,7 @@ export default function DashboardEscritorio() {
     <div className="space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-display font-semibold">{saudacao()}, {primeiroNome}</h1>
+        <h1 className="text-4xl font-display font-semibold bg-gradient-to-r from-brand to-accent-deep bg-clip-text text-transparent">{saudacao()}, {primeiroNome}</h1>
         <p className="text-muted-foreground mt-1">Visão geral do escritório.</p>
       </div>
 
@@ -247,10 +247,10 @@ export default function DashboardEscritorio() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard icon={Users} label="Clientes ativos" value={stats.clientes} />
-          <StatCard icon={FileClock} label="Competências em aberto" value={stats.abertas} />
-          <StatCard icon={ClipboardList} label="Notas aguardando classificação" value={stats.aguardando} />
-          <StatCard icon={FileDown} label="Prontas para exportar" value={stats.pronta_exportar} highlight={stats.pronta_exportar > 0} />
+          <StatCard icon={Users} label="Clientes ativos" value={stats.clientes} tone="brand" />
+          <StatCard icon={FileClock} label="Competências em aberto" value={stats.abertas} tone="warning" />
+          <StatCard icon={ClipboardList} label="Notas aguardando classificação" value={stats.aguardando} tone="info" />
+          <StatCard icon={FileDown} label="Prontas para exportar" value={stats.pronta_exportar} tone="success" highlight={stats.pronta_exportar > 0} />
         </div>
       )}
 
