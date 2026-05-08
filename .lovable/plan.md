@@ -1,43 +1,49 @@
-# Permitir correções pós-classificação em todos os tipos de documento
+## Objetivo
 
-Hoje, tanto em NFS-e tomadas (planilha), quanto NF-e entrada/saída (XML/SIEG) e documento avulso (upload com IA), depois que a nota é salva os campos extraídos viram somente leitura, e quando a competência é concluída tudo trava. Vamos resolver para todos os fluxos.
+Você já pode reabrir a competência, alterar só as notas que quiser e gerar um novo TXT — as classificações das demais notas são preservadas. O problema é que **a UI não comunica isso com clareza**, então passa a sensação de que reabrir "zera tudo" ou que não vai dar para exportar de novo. Vamos ajustar a comunicação e garantir o fluxo de re-exportação.
 
-## Etapa 1 — Editar dados da nota dentro do drawer (todos os tipos)
+## Mudanças
 
-Aplicar a edição em **dois drawers**:
+### 1. Banner "Reabrir competência" mais explicativo
+Em `ClassificacaoNFe.tsx` e `ClassificacaoNFSe.tsx`, quando o status é `concluida` (ou `exportada`), o banner atual fica:
 
-### A) `src/components/NotaDrawerNFe.tsx` (usado por NF-e entrada/saída e documento avulso)
+> **Competência concluída** — para corrigir alguma classificação, reabra a competência. *[Reabrir]*
 
-- Botão **"Editar dados"** no canto superior direito da aba Resumo.
-- Modo edição troca os `Field` por inputs para:
-  - Razão social, CNPJ, endereço, município, UF
-  - Número, emissão, vencimento
-  - Valor total
-  - Descrição e CFOP do item nº 1 (apenas quando documento avulso, pois NF-e tem múltiplos itens — para NF-e a edição de descrição/CFOP por item já existe via classificação por item; o formulário aqui só edita o cabeçalho da nota).
-- Botões **Salvar** / **Cancelar** no rodapé do drawer.
-- Salva via `update` em `notas_fiscais` (cabeçalho) e, quando aplicável, em `notas_fiscais_itens` (item 1).
-- Botão oculto se `readOnly` (competência concluída/exportada) ou `nota.cancelada`.
-- Nova prop `onSalvarDados(notaId, patchNota, patchItem?) => Promise<void>` injetada por `ClassificacaoNFe.tsx`.
+Trocar por um texto que deixa claro o que acontece e o que **não** acontece:
 
-### B) `NotaDrawer` interno em `src/pages/ClassificacaoNFSe.tsx` (NFS-e tomadas)
+> **Competência concluída.** Para ajustar a classificação de uma ou mais notas, reabra a competência. **As demais notas continuam com a classificação atual** — só o que você editar muda. Depois é só concluir e gerar um novo TXT. *[Reabrir competência]*
 
-- Mesmo botão **"Editar dados"** dentro do drawer.
-- Modo edição com inputs para os campos do prestador e da nota NFS-e (razão, CNPJ, município, UF, número, emissão, valor, descrição/serviço municipal).
-- Salva via `update` em `notas_fiscais`.
-- Botão oculto quando competência concluída/exportada ou nota cancelada.
+Mesmo texto para status `exportada`, ajustando só o final: "...gerar uma nova versão do TXT (a anterior fica no histórico)."
 
-Padrão de UX, validação básica (CNPJ só dígitos, valor numérico aceitando vírgula) e toasts são compartilhados visualmente entre os dois drawers.
+### 2. Diálogo de confirmação "Reabrir" mais informativo
+Os modais de confirmação atuais (`confirmReabrirOpen`) ganham um corpo claro:
 
-## Etapa 2 — Tornar 'Reabrir competência' visível em ambas as telas
+- Título: **Reabrir esta competência?**
+- Descrição: 
+  - "Todas as notas já classificadas mantêm a classificação atual."
+  - "Você poderá editar apenas as notas que quiser."
+  - "Depois é só concluir novamente e gerar um novo TXT — o arquivo anterior continua disponível no histórico de exportações."
+- Botões: *Cancelar* / *Reabrir competência*
 
-O botão **Reabrir competência** já existe em `ClassificacaoNFe.tsx` (linha 742) e em `ClassificacaoNFSe.tsx` (linha 722), mas hoje fica em local discreto. Ajustes:
+### 3. Permitir gerar TXT novamente após re-conclusão
+Hoje, depois de exportar uma vez, o status vai para `exportada` e o botão de gerar TXT some (`competencia.status !== "exportada"` em ambos os arquivos). Vamos:
 
-- Quando o status é **concluida** (e não exportada), exibir um banner sutil no topo da página: "Competência concluída — para corrigir alguma classificação, reabra a competência." com botão **Reabrir** ao lado, em ambas as telas.
-- Mantém o botão atual onde está (não removemos), só ganhamos um ponto de entrada óbvio.
+- Manter o botão **"Gerar novo TXT"** visível também quando `status === "exportada"`, com rótulo diferente quando já houve exportação anterior:
+  - 1ª vez: "Gerar TXT separador"
+  - Já exportada antes: "Gerar nova versão do TXT"
+- Cada geração continua criando uma nova linha em `exportacoes` (já é assim hoje), aparecendo no `HistoricoExportacoes`.
+- Ao gerar nova versão, atualizar `exportada_em` com a data da última exportação.
+
+### 4. Indicador visual nas notas alteradas após reabertura *(opcional, leve)*
+Pequeno badge "editada" ao lado de notas cujo `classificado_em` é mais recente que a `exportada_em` anterior. Ajuda o usuário a saber o que mudou desde a última exportação. Se preferir manter simples, podemos pular este item.
 
 ## Fora de escopo
 
-- Tela de **Upload de Documentos** (`UploadDocumentos.tsx`) não muda — a edição passa a acontecer dentro do drawer da classificação, que é o mesmo lugar para documento avulso.
-- Telas de **Importar Planilha** e **Importar XMLs** não mudam.
-- Layouts de TXT, edge functions de exportação/importação — intocados.
-- Sem migrations, sem alterações em RLS, sem alterar `types.ts`.
+- Lógica de reabertura no banco (já preserva classificações corretamente).
+- Edge function `gerar-txt-separador` (continua igual; já suporta múltiplas chamadas).
+- Migrations, RLS, types.ts.
+- Reabrir só "X notas selecionadas" — toda a competência volta para `aberta`, mas as classificações ficam intactas.
+
+## Pergunta rápida
+
+O item 4 (badge "editada") faz sentido para você ou prefere deixar de fora por enquanto?
