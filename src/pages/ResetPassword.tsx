@@ -144,7 +144,7 @@ export default function ResetPassword() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="w-full max-w-md">
-        <div className="mb-8 flex justify-center"><AcruxLogo /></div>
+        <div className="mb-8 flex justify-center"><AcruxLogo size="lg" /></div>
         <Card className="p-8 rounded-xl border shadow-sm">
           {status === "validando" && (
             <div className="flex flex-col items-center justify-center gap-3 py-8">

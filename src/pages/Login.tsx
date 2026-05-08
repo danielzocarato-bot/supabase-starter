@@ -139,7 +139,7 @@ export default function Login() {
         className="w-full max-w-md"
       >
         <div className="mb-8 flex justify-center">
-          <AcruxLogo />
+          <AcruxLogo size="lg" />
         </div>
         <Card className="p-8 rounded-xl border shadow-brand backdrop-blur-sm bg-card/95">
           <h1 className="text-2xl font-display font-semibold mb-1">
