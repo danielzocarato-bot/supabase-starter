@@ -121,7 +121,17 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4">
+    <div className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden bg-background">
+      <div className="absolute inset-0 -z-10 pointer-events-none">
+        <div
+          className="absolute top-0 left-0 w-[600px] h-[600px] rounded-full blur-3xl -translate-x-1/3 -translate-y-1/3"
+          style={{ background: "radial-gradient(circle, hsl(var(--brand) / 0.15), transparent 70%)" }}
+        />
+        <div
+          className="absolute bottom-0 right-0 w-[500px] h-[500px] rounded-full blur-3xl translate-x-1/4 translate-y-1/4"
+          style={{ background: "radial-gradient(circle, hsl(var(--info) / 0.12), transparent 70%)" }}
+        />
+      </div>
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
