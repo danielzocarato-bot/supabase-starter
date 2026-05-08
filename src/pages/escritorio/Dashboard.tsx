@@ -285,9 +285,19 @@ export default function DashboardEscritorio() {
         {loading ? (
           <Skeleton className="h-[180px] rounded-md" />
         ) : andamento.length === 0 ? (
-          <p className="text-muted-foreground text-center py-8">
-            Comece cadastrando seu primeiro cliente. Em poucos passos, você organiza a estrutura completa pra que a classificação flua todo mês com segurança.
-          </p>
+          <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
+            <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-brand/15 to-info/10 flex items-center justify-center mb-4 ring-1 ring-brand/10">
+              <FileClock className="h-7 w-7 text-brand" strokeWidth={1.5} />
+            </div>
+            <h3 className="text-lg font-display font-semibold mb-2">Nenhuma competência em andamento</h3>
+            <p className="text-sm text-muted-foreground mb-6 max-w-md">
+              Comece cadastrando seu primeiro cliente. Em poucos passos, você organiza a estrutura completa pra que a classificação flua todo mês com segurança.
+            </p>
+            <Button onClick={() => nav("/app/escritorio/clientes/novo")} className="shadow-brand">
+              <UserPlus className="h-4 w-4 mr-2" />
+              Cadastrar primeiro cliente
+            </Button>
+          </div>
         ) : (
           <Table>
             <TableHeader>
