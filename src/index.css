@@ -126,14 +126,14 @@
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "cv11", "ss01";
     background-image:
-      radial-gradient(at 0% 0%, hsl(var(--brand) / 0.04) 0%, transparent 50%),
-      radial-gradient(at 100% 100%, hsl(var(--info) / 0.03) 0%, transparent 50%);
+      radial-gradient(at 0% 0%, hsl(var(--brand) / 0.10) 0%, transparent 55%),
+      radial-gradient(at 100% 100%, hsl(var(--info) / 0.08) 0%, transparent 55%);
     background-attachment: fixed;
   }
   .dark body {
     background-image:
-      radial-gradient(at 0% 0%, hsl(var(--brand) / 0.08) 0%, transparent 50%),
-      radial-gradient(at 100% 100%, hsl(var(--info) / 0.05) 0%, transparent 50%);
+      radial-gradient(at 0% 0%, hsl(var(--brand) / 0.18) 0%, transparent 55%),
+      radial-gradient(at 100% 100%, hsl(var(--info) / 0.12) 0%, transparent 55%);
   }
   h1 { font-family: 'Inter Tight', 'Inter', sans-serif; letter-spacing: -0.025em; font-weight: 600; }
   h2 { font-family: 'Inter Tight', 'Inter', sans-serif; letter-spacing: -0.02em; font-weight: 600; }
