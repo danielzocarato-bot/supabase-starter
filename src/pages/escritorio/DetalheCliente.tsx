@@ -868,13 +868,26 @@ function ImportarAcumModal({
               {parsing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
               Selecionar arquivo
             </Button>
-            <a
-              href="/modelo-acumuladores.xlsx"
-              download
+            <button
+              type="button"
+              onClick={() => {
+                const ws = XLSX.utils.aoa_to_sheet([
+                  ["Código", "Descrição"],
+                  ["1", "Receita de Vendas"],
+                  ["2", "Receita de Serviços"],
+                  ["3", "Devoluções"],
+                  ["4", "Receita Não Tributada"],
+                  ["5", "Receita de Exportação"],
+                ]);
+                ws["!cols"] = [{ wch: 12 }, { wch: 40 }];
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Acumuladores");
+                XLSX.writeFile(wb, "modelo-acumuladores.xlsx");
+              }}
               className="text-sm text-brand hover:underline"
             >
               Baixar planilha modelo
-            </a>
+            </button>
           </div>
 
           {parsed.length > 0 && (
