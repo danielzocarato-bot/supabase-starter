@@ -500,6 +500,25 @@ function AbaAcumuladores({ clienteId }: { clienteId: string }) {
           </label>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            onClick={() => {
+              const ws = XLSX.utils.aoa_to_sheet([
+                ["Código", "Descrição"],
+                ["1", "Receita de Vendas"],
+                ["2", "Receita de Serviços"],
+                ["3", "Devoluções"],
+                ["4", "Receita Não Tributada"],
+                ["5", "Receita de Exportação"],
+              ]);
+              ws["!cols"] = [{ wch: 12 }, { wch: 40 }];
+              const wb = XLSX.utils.book_new();
+              XLSX.utils.book_append_sheet(wb, ws, "Acumuladores");
+              XLSX.writeFile(wb, "modelo-acumuladores.xlsx");
+            }}
+          >
+            <FileSpreadsheet className="h-4 w-4" /> Planilha modelo
+          </Button>
           <Button variant="outline" onClick={() => setImportOpen(true)}>
             <Upload className="h-4 w-4" /> Importar XLSX
           </Button>
@@ -863,32 +882,10 @@ function ImportarAcumModal({
             className="hidden"
             onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); }}
           />
-          <div className="flex flex-wrap items-center gap-3">
-            <Button variant="outline" onClick={() => inputRef.current?.click()} disabled={parsing}>
-              {parsing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-              Selecionar arquivo
-            </Button>
-            <button
-              type="button"
-              onClick={() => {
-                const ws = XLSX.utils.aoa_to_sheet([
-                  ["Código", "Descrição"],
-                  ["1", "Receita de Vendas"],
-                  ["2", "Receita de Serviços"],
-                  ["3", "Devoluções"],
-                  ["4", "Receita Não Tributada"],
-                  ["5", "Receita de Exportação"],
-                ]);
-                ws["!cols"] = [{ wch: 12 }, { wch: 40 }];
-                const wb = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(wb, ws, "Acumuladores");
-                XLSX.writeFile(wb, "modelo-acumuladores.xlsx");
-              }}
-              className="text-sm text-brand hover:underline"
-            >
-              Baixar planilha modelo
-            </button>
-          </div>
+          <Button variant="outline" onClick={() => inputRef.current?.click()} disabled={parsing}>
+            {parsing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+            Selecionar arquivo
+          </Button>
 
           {parsed.length > 0 && (
             <div className="space-y-2">
