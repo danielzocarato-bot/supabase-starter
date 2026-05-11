@@ -733,26 +733,78 @@ function ImportarAcumModal({
       const buf = await file.arrayBuffer();
       const wb = XLSX.read(buf, { type: "array" });
       const ws = wb.Sheets[wb.SheetNames[0]];
-      const json = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: "" });
+      // Lê como matriz para detectar a linha do cabeçalho (pode não ser a primeira)
+      const matrix = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, defval: "" }) as unknown[][];
+
+      const isCodHeader = (v: string) => /^(c[oó]d(igo)?|acumulador|conta)$/i.test(v.trim());
+      const isDescHeader = (v: string) => /^(descri[cç][aã]o|descr|nome|hist[oó]rico|t[ií]tulo)$/i.test(v.trim());
+
+      let headerRow = -1;
+      let codIdx = -1;
+      let descIdx = -1;
+
+      for (let i = 0; i < Math.min(matrix.length, 15); i++) {
+        const row = (matrix[i] ?? []).map(c => String(c ?? ""));
+        const cIdx = row.findIndex(isCodHeader);
+        const dIdx = row.findIndex(isDescHeader);
+        if (cIdx >= 0 && dIdx >= 0) {
+          headerRow = i; codIdx = cIdx; descIdx = dIdx; break;
+        }
+      }
+
+      // Fallback: se não achou cabeçalho explícito mas há 2+ colunas com (número, texto), assume col 0 e 1
+      if (headerRow === -1 && matrix.length > 0) {
+        const sampleRow = matrix.find(r => {
+          const a = String((r as any[])[0] ?? "").replace(/\D/g, "");
+          const b = String((r as any[])[1] ?? "").trim();
+          return a && !Number.isNaN(parseInt(a, 10)) && b.length > 0;
+        });
+        if (sampleRow) { headerRow = -1; codIdx = 0; descIdx = 1; }
+      }
+
+      if (codIdx < 0 || descIdx < 0) {
+        const primeiraLinha = (matrix[0] ?? []).map(c => String(c ?? "")).filter(Boolean).join(" | ");
+        toast.error("Não identificamos as colunas Código e Descrição.", {
+          description: primeiraLinha
+            ? `Cabeçalho detectado: ${primeiraLinha}. Renomeie para "Código" e "Descrição".`
+            : "Verifique se o arquivo tem cabeçalho com Código e Descrição.",
+        });
+        setParsed([]); setInvalidos(0);
+        return;
+      }
+
       const items: { codigo: number; descricao: string }[] = [];
       let inval = 0;
       const seen = new Set<number>();
-      for (const row of json) {
-        const keys = Object.keys(row);
-        const kCod = keys.find(k => /c[oó]digo/i.test(k));
-        const kDesc = keys.find(k => /descri[cç][aã]o/i.test(k));
-        const codRaw = kCod ? String(row[kCod] ?? "").replace(/\D/g, "") : "";
-        const descRaw = kDesc ? String(row[kDesc] ?? "").trim() : "";
+      const startRow = headerRow >= 0 ? headerRow + 1 : 0;
+      for (let i = startRow; i < matrix.length; i++) {
+        const row = matrix[i] ?? [];
+        const codRaw = String((row as any[])[codIdx] ?? "").replace(/\D/g, "");
+        const descRaw = String((row as any[])[descIdx] ?? "").trim();
+        if (!codRaw && !descRaw) continue; // linha vazia, ignora silenciosamente
         const cod = parseInt(codRaw, 10);
         if (Number.isNaN(cod) || !descRaw) { inval++; continue; }
         if (seen.has(cod)) continue;
         seen.add(cod);
         items.push({ codigo: cod, descricao: descRaw });
       }
+
       setParsed(items);
       setInvalidos(inval);
-    } catch {
-      toast.error("Não conseguimos ler este arquivo.", { description: "Verifique se está no formato XLSX." });
+
+      if (items.length === 0) {
+        toast.error("Nenhum acumulador válido encontrado.", {
+          description: inval > 0
+            ? `${inval} linha(s) ignorada(s) por código ou descrição inválidos.`
+            : "Verifique o conteúdo da planilha.",
+        });
+      } else {
+        toast.success(`${items.length} acumulador(es) reconhecidos.`, {
+          description: inval > 0 ? `${inval} linha(s) ignorada(s).` : undefined,
+        });
+      }
+    } catch (e: any) {
+      toast.error("Não conseguimos ler este arquivo.", { description: e?.message ?? "Verifique se está no formato XLSX." });
     } finally {
       setParsing(false);
     }
