@@ -863,10 +863,19 @@ function ImportarAcumModal({
             className="hidden"
             onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); }}
           />
-          <Button variant="outline" onClick={() => inputRef.current?.click()} disabled={parsing}>
-            {parsing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-            Selecionar arquivo
-          </Button>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button variant="outline" onClick={() => inputRef.current?.click()} disabled={parsing}>
+              {parsing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+              Selecionar arquivo
+            </Button>
+            <a
+              href="/modelo-acumuladores.xlsx"
+              download
+              className="text-sm text-brand hover:underline"
+            >
+              Baixar planilha modelo
+            </a>
+          </div>
 
           {parsed.length > 0 && (
             <div className="space-y-2">
