@@ -1,49 +1,39 @@
-## Objetivo
+## Problema
 
-Você já pode reabrir a competência, alterar só as notas que quiser e gerar um novo TXT — as classificações das demais notas são preservadas. O problema é que **a UI não comunica isso com clareza**, então passa a sensação de que reabrir "zera tudo" ou que não vai dar para exportar de novo. Vamos ajustar a comunicação e garantir o fluxo de re-exportação.
+O TXT gerado para `nfe_entrada` (layout `dominio_separador`, macro Excel) hoje produz **33 campos** por linha e **não inclui a chave de acesso da NF-e** (44 dígitos). O Domínio, ao importar entradas, exige a chave para amarrar a nota — sem ela a importação falha ou registra a nota sem chave.
 
-## Mudanças
+A chave já existe no banco (`notas_fiscais.chave_nfe`) e já é selecionada na query (`gerar-txt-separador/index.ts` linha 256), apenas não está sendo escrita no arquivo.
 
-### 1. Banner "Reabrir competência" mais explicativo
-Em `ClassificacaoNFe.tsx` e `ClassificacaoNFSe.tsx`, quando o status é `concluida` (ou `exportada`), o banner atual fica:
+## Onde inserir no layout
 
-> **Competência concluída** — para corrigir alguma classificação, reabra a competência. *[Reabrir]*
+No layout macro do Domínio para entradas, a **chave de acesso é o campo 34**, logo após o último campo de COFINS (campo 33). É posição padrão "anexa ao final" dos 33 campos da macro — não desloca nenhum campo existente, apenas acrescenta uma coluna.
 
-Trocar por um texto que deixa claro o que acontece e o que **não** acontece:
+Posição final (apenas para `nfe_entrada`):
 
-> **Competência concluída.** Para ajustar a classificação de uma ou mais notas, reabra a competência. **As demais notas continuam com a classificação atual** — só o que você editar muda. Depois é só concluir e gerar um novo TXT. *[Reabrir competência]*
+```text
+... 32 R Aliq COFINS
+    33 R Valor COFINS
+    34 C Chave NF-e   ← NOVO (44 dígitos, sem máscara)
+```
 
-Mesmo texto para status `exportada`, ajustando só o final: "...gerar uma nova versão do TXT (a anterior fica no histórico)."
+Para `nfe_saida` a chave normalmente não é exigida (a Domínio gera/valida pela emissão), então mantemos 33 campos. Mesmo assim, o mais seguro é **emitir a chave também na saída** (campo 34) — Domínio aceita campo extra e ignora se não usar. Confirmar com você abaixo.
 
-### 2. Diálogo de confirmação "Reabrir" mais informativo
-Os modais de confirmação atuais (`confirmReabrirOpen`) ganham um corpo claro:
+## Mudança
 
-- Título: **Reabrir esta competência?**
-- Descrição: 
-  - "Todas as notas já classificadas mantêm a classificação atual."
-  - "Você poderá editar apenas as notas que quiser."
-  - "Depois é só concluir novamente e gerar um novo TXT — o arquivo anterior continua disponível no histórico de exportações."
-- Botões: *Cancelar* / *Reabrir competência*
+Arquivo único: `supabase/functions/gerar-txt-separador/index.ts`
 
-### 3. Permitir gerar TXT novamente após re-conclusão
-Hoje, depois de exportar uma vez, o status vai para `exportada` e o botão de gerar TXT some (`competencia.status !== "exportada"` em ambos os arquivos). Vamos:
+1. No bloco `else` (NF-e entrada/saída e doc avulso), após a linha 572 (`"" // 33 Valor COFINS`), acrescentar:
+   ```ts
+   digitsOnly(n.chave_nfe), // 34 C Chave NF-e (44 dígitos)
+   ```
+2. Para `documento_avulso` a chave normalmente é vazia → `digitsOnly` já devolve `""`, então fica em branco automaticamente. Sem tratamento extra.
+3. NFS-e tomada (28 campos) **não muda** — layout 209 não tem chave.
 
-- Manter o botão **"Gerar novo TXT"** visível também quando `status === "exportada"`, com rótulo diferente quando já houve exportação anterior:
-  - 1ª vez: "Gerar TXT separador"
-  - Já exportada antes: "Gerar nova versão do TXT"
-- Cada geração continua criando uma nova linha em `exportacoes` (já é assim hoje), aparecendo no `HistoricoExportacoes`.
-- Ao gerar nova versão, atualizar `exportada_em` com a data da última exportação.
+Nada mais é tocado: contagem de campos do layout 209 e do bloco NFS-e ficam intactos, ordem dos campos 1–33 preservada.
 
-### 4. Indicador visual nas notas alteradas após reabertura *(opcional, leve)*
-Pequeno badge "editada" ao lado de notas cujo `classificado_em` é mais recente que a `exportada_em` anterior. Ajuda o usuário a saber o que mudou desde a última exportação. Se preferir manter simples, podemos pular este item.
+## Pergunta antes de implementar
 
-## Fora de escopo
+Confirmar 2 pontos:
 
-- Lógica de reabertura no banco (já preserva classificações corretamente).
-- Edge function `gerar-txt-separador` (continua igual; já suporta múltiplas chamadas).
-- Migrations, RLS, types.ts.
-- Reabrir só "X notas selecionadas" — toda a competência volta para `aberta`, mas as classificações ficam intactas.
-
-## Pergunta rápida
-
-O item 4 (badge "editada") faz sentido para você ou prefere deixar de fora por enquanto?
+1. Adiciono a chave no campo 34 **só para `nfe_entrada`**, ou **para entrada e saída** (mais seguro, Domínio ignora extra)?
+2. Para notas de entrada **sem chave no banco** (raro, mas possível em importações antigas), prefere: (a) gerar campo vazio e deixar Domínio reclamar, ou (b) bloquear export listando essas notas como pendência, igual ao que já fazemos para classificação?

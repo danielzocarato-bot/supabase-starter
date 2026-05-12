@@ -570,6 +570,7 @@ Deno.serve(async (req) => {
         "",                                                // 31 R Valor PIS
         "",                                                // 32 R Aliq COFINS
         "",                                                // 33 R Valor COFINS
+        digitsOnly(n.chave_nfe),                           // 34 C Chave NF-e (44 dígitos)
       ];
     }
 
