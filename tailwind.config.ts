@@ -14,8 +14,13 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        display: ['Inter Tight', 'Inter', 'sans-serif'],
+        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+        display: ['Poppins', 'Inter', 'sans-serif'],
+        heading: ['Poppins', 'system-ui', 'sans-serif'],
+      },
+      backgroundImage: {
+        "gradient-primary": "var(--gradient-primary)",
+        "gradient-gold": "var(--gradient-gold)",
       },
       colors: {
         border: "hsl(var(--border))",
@@ -23,10 +28,25 @@ export default {
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
+        status: {
+          pendente: "hsl(var(--status-pendente))",
+          "em-andamento": "hsl(var(--status-em-andamento))",
+          aguardando: "hsl(var(--status-aguardando))",
+          baixada: "hsl(var(--status-baixada))",
+          atrasada: "hsl(var(--status-atrasada))",
+          revisao: "hsl(var(--status-revisao))",
+        },
         brand: {
           DEFAULT: "hsl(var(--brand))",
           foreground: "hsl(var(--brand-foreground))",
           soft: "hsl(var(--brand-soft))",
+          navy: "hsl(var(--brand-navy))",
+          "navy-soft": "hsl(var(--brand-navy-soft))",
+          gold: "hsl(var(--brand-gold))",
+          "gold-light": "hsl(var(--brand-gold-light))",
+          "gold-dark": "hsl(var(--brand-gold-dark))",
+          copper: "hsl(var(--brand-copper))",
+          "copper-soft": "hsl(var(--brand-copper-soft))",
           ring: "hsl(var(--brand-ring))",
         },
         success: "hsl(var(--success))",

@@ -240,7 +240,7 @@ export default function Login() {
         </Card>
 
         <p className="text-center text-xs text-muted-foreground mt-6">
-          Acrux Contabilidade · uma forma mais inteligente de classificar suas notas
+          FLOW CLASSIFICA · uma forma mais inteligente de classificar suas notas
         </p>
       </motion.div>
     </div>

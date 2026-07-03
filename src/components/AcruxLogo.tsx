@@ -10,19 +10,19 @@ export const AcruxLogo = ({
       main: "text-lg",
       sub: "text-[10px]",
       gap: "-mt-0.5",
-      mainExtra: "",
+      mainExtra: "text-brand-navy",
     },
     md: {
       main: "text-2xl",
       sub: "text-[11px]",
       gap: "-mt-1",
-      mainExtra: "",
+      mainExtra: "text-brand-navy",
     },
     lg: {
       main: "text-5xl",
       sub: "text-sm",
       gap: "-mt-2",
-      mainExtra: "bg-gradient-to-r from-brand to-info bg-clip-text text-transparent",
+      mainExtra: "bg-gradient-gold bg-clip-text text-transparent",
     },
   };
 
@@ -31,16 +31,14 @@ export const AcruxLogo = ({
   return (
     <div className={`flex items-center ${className}`}>
       <div className="flex flex-col leading-[0.95]">
-        <span
-          className={`font-display font-bold tracking-tighter ${s.main} ${s.mainExtra || "text-brand"}`}
-        >
+        <span className={`font-display font-bold tracking-tight ${s.main} ${s.mainExtra}`}>
           Flow
         </span>
         <span
-          className={`${s.sub} font-semibold text-muted-foreground ${s.gap} uppercase`}
+          className={`${s.sub} font-semibold text-brand-gold-dark ${s.gap} uppercase`}
           style={{ letterSpacing: "0.2em" }}
         >
-          Classifica
+          CLASSIFICA
         </span>
       </div>
     </div>
