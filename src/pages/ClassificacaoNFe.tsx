@@ -81,7 +81,7 @@ function normalize(s: string) {
 }
 
 type CompetenciaStatus = "aberta" | "concluida" | "exportada";
-type TipoOperacao = "nfe_entrada" | "nfe_saida" | "nfse_tomada";
+type TipoOperacao = "nfe_entrada" | "nfe_saida" | "nfse_tomada" | "documento_avulso";
 
 type Competencia = {
   id: string;
