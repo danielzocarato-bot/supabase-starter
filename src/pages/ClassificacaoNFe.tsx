@@ -1372,6 +1372,7 @@ function PorNotaList({
 
 function NotaCard({
   grupo, acumuladores, acumMap, pisca, readOnly, tipoIsSaida,
+  permitirSegregar, segregandoId, onSegregar, onRemoverSegregacao,
   onAplicarItem, onAbrirDrawer,
 }: {
   grupo: GrupoNotaRender;
@@ -1380,6 +1381,10 @@ function NotaCard({
   pisca: Set<string>;
   readOnly: boolean;
   tipoIsSaida: boolean;
+  permitirSegregar: boolean;
+  segregandoId: string | null;
+  onSegregar: (notaId: string) => void;
+  onRemoverSegregacao: (notaId: string) => void;
   onAplicarItem: (itemId: string, acumuladorId: string | null) => void;
   onAbrirDrawer: (notaId: string) => void;
 }) {
@@ -1389,9 +1394,12 @@ function NotaCard({
   const pctNota = total > 0 ? (classificados / total) * 100 : 0;
   const TipoIcon = tipoIsSaida ? ArrowUpFromLine : ArrowDownToLine;
   const tipoLabel = tipoIsSaida ? "Saída" : "Entrada";
+  const isSegregada = !!info.raw_data?.segregada_de;
+  const indiceSeg = info.raw_data?.segregacao_indice;
+  const isSegregando = segregandoId === grupo.notaId;
 
   return (
-    <Card data-nota-id={grupo.notaId} className={`rounded-xl overflow-hidden ${cancelada ? "opacity-70" : ""}`}>
+    <Card data-nota-id={grupo.notaId} className={`rounded-xl overflow-hidden ${cancelada ? "opacity-70" : ""} ${isSegregada ? "ml-6 border-l-4 border-l-brand/40" : ""}`}>
       <div
         className="flex items-center gap-4 p-4 hover:bg-muted/30 cursor-pointer transition-colors"
         onClick={() => setAberto((v) => !v)}
@@ -1417,6 +1425,11 @@ function NotaCard({
           <div className={`font-mono text-sm font-semibold tabular-nums ${cancelada ? "line-through" : ""}`}>
             NF-e {info.numero_nfe ?? "—"}
           </div>
+          {isSegregada && indiceSeg != null && (
+            <Badge variant="outline" className="text-[10px] font-normal">
+              seg. {indiceSeg}
+            </Badge>
+          )}
           <div className={`text-xs text-muted-foreground tabular-nums ${cancelada ? "line-through" : ""}`}>
             {formatDateBR(info.emissao_nfe)}
           </div>
@@ -1447,7 +1460,40 @@ function NotaCard({
           )}
         </div>
 
-        <div onClick={(e) => e.stopPropagation()}>
+        <div onClick={(e) => e.stopPropagation()} className="flex items-center gap-1">
+          {permitirSegregar && !readOnly && !cancelada && (
+            isSegregada ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-destructive hover:text-destructive"
+                    onClick={() => onRemoverSegregacao(grupo.notaId)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Remover linha segregada</TooltipContent>
+              </Tooltip>
+            ) : (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    disabled={isSegregando}
+                    onClick={() => onSegregar(grupo.notaId)}
+                  >
+                    {isSegregando
+                      ? <Loader2 className="h-4 w-4 animate-spin" />
+                      : <Plus className="h-4 w-4" />}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Segregar em nova linha</TooltipContent>
+              </Tooltip>
+            )
+          )}
           <Button
             variant="ghost"
             size="sm"
