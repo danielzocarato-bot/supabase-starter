@@ -31,7 +31,7 @@ import {
 import { toast } from "sonner";
 import {
   ArrowLeft, ArrowDownToLine, ArrowUpFromLine, CheckCircle2, ChevronDown,
-  ChevronRight, ChevronsUpDown, Download, Eye, History, Layers, List, Loader2, MoreHorizontal, Search, Trash2, Undo2,
+  ChevronRight, ChevronsUpDown, Download, Eye, History, Layers, List, Loader2, MoreHorizontal, Plus, Search, Trash2, Undo2, X,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -81,7 +81,7 @@ function normalize(s: string) {
 }
 
 type CompetenciaStatus = "aberta" | "concluida" | "exportada";
-type TipoOperacao = "nfe_entrada" | "nfe_saida" | "nfse_tomada";
+type TipoOperacao = "nfe_entrada" | "nfe_saida" | "nfse_tomada" | "documento_avulso";
 
 type Competencia = {
   id: string;
@@ -102,6 +102,7 @@ type Acumulador = {
 
 type NotaInfo = {
   id: string;
+  id_externo: string | null;
   numero_nfe: string | null;
   chave_nfe: string | null;
   emissao_nfe: string | null;
@@ -217,7 +218,7 @@ export default function ClassificacaoNFe() {
 
       const notasReq = supabase
         .from("notas_fiscais")
-        .select("id, numero_nfe, chave_nfe, emissao_nfe, valor_nfe, cancelada, observacao, tipo_operacao_nfe, prestador_razao, prestador_cnpj, raw_data")
+        .select("id, id_externo, numero_nfe, chave_nfe, emissao_nfe, valor_nfe, cancelada, observacao, tipo_operacao_nfe, prestador_razao, prestador_cnpj, raw_data")
         .eq("competencia_id", id);
 
       const [compRes, notasRes] = await Promise.all([compReq, notasReq]);
@@ -248,6 +249,7 @@ export default function ClassificacaoNFe() {
       (notasRes.data ?? []).forEach((n: any) => {
         notasMap.set(n.id, {
           id: n.id,
+          id_externo: n.id_externo,
           numero_nfe: n.numero_nfe,
           chave_nfe: n.chave_nfe,
           emissao_nfe: n.emissao_nfe,
@@ -426,11 +428,22 @@ export default function ClassificacaoNFe() {
         total: all.length,
       });
     });
+    const baseIdExterno = (g: GrupoNota) => {
+      const ie = g.info.id_externo ?? "";
+      const idx = ie.indexOf("#SEG-");
+      return idx >= 0 ? ie.slice(0, idx) : ie;
+    };
+    const segIdx = (g: GrupoNota) => Number(g.info.raw_data?.segregacao_indice ?? 0);
     arr.sort((a, b) => {
-      const da = a.info.emissao_nfe ?? "";
-      const db = b.info.emissao_nfe ?? "";
-      if (da !== db) return da.localeCompare(db);
-      return (a.info.numero_nfe ?? "").localeCompare(b.info.numero_nfe ?? "");
+      const ba = baseIdExterno(a);
+      const bb = baseIdExterno(b);
+      if (ba !== bb) {
+        const da = a.info.emissao_nfe ?? "";
+        const db = b.info.emissao_nfe ?? "";
+        if (da !== db) return da.localeCompare(db);
+        return ba.localeCompare(bb);
+      }
+      return segIdx(a) - segIdx(b);
     });
     return arr;
   }, [itens, itensFiltrados, notasMapState]);
@@ -511,6 +524,107 @@ export default function ClassificacaoNFe() {
     },
     [profile?.id],
   );
+
+  const [segregandoId, setSegregandoId] = useState<string | null>(null);
+
+  const refetchNotasEItens = useCallback(async () => {
+    if (!id) return;
+    const { data: notasRes, error: nErr } = await supabase
+      .from("notas_fiscais")
+      .select("id, id_externo, numero_nfe, chave_nfe, emissao_nfe, valor_nfe, cancelada, observacao, tipo_operacao_nfe, prestador_razao, prestador_cnpj, raw_data")
+      .eq("competencia_id", id);
+    if (nErr) {
+      toast.error("Algo precisa de atenção", { description: nErr.message });
+      return;
+    }
+    const nMap = new Map<string, NotaInfo>();
+    (notasRes ?? []).forEach((n: any) => {
+      nMap.set(n.id, {
+        id: n.id,
+        id_externo: n.id_externo,
+        numero_nfe: n.numero_nfe,
+        chave_nfe: n.chave_nfe,
+        emissao_nfe: n.emissao_nfe,
+        valor_nfe: n.valor_nfe == null ? null : Number(n.valor_nfe),
+        cancelada: !!n.cancelada,
+        observacao: n.observacao,
+        tipo_operacao_nfe: n.tipo_operacao_nfe,
+        prestador_razao: n.prestador_razao,
+        prestador_cnpj: n.prestador_cnpj,
+        raw_data: n.raw_data,
+      });
+    });
+    setNotasMapState(nMap);
+    const notaIds = Array.from(nMap.keys());
+    if (notaIds.length === 0) {
+      setItens([]);
+      return;
+    }
+    const { data: itensRes, error: iErr } = await supabase
+      .from("notas_fiscais_itens")
+      .select("id, nota_id, numero_item, codigo_produto, descricao_produto, ncm, cfop, valor, acumulador_id")
+      .in("nota_id", notaIds)
+      .order("nota_id", { ascending: true })
+      .order("numero_item", { ascending: true });
+    if (iErr) {
+      toast.error("Algo precisa de atenção", { description: iErr.message });
+      return;
+    }
+    const merged: ItemNFe[] = (itensRes ?? []).map((i: any) => {
+      const n = nMap.get(i.nota_id);
+      return {
+        id: i.id,
+        nota_id: i.nota_id,
+        numero_item: i.numero_item,
+        codigo_produto: i.codigo_produto,
+        descricao_produto: i.descricao_produto,
+        ncm: i.ncm,
+        cfop: i.cfop,
+        valor: i.valor == null ? null : Number(i.valor),
+        acumulador_id: i.acumulador_id,
+        nota_numero: n?.numero_nfe ?? null,
+        nota_chave: n?.chave_nfe ?? null,
+        nota_emissao: n?.emissao_nfe ?? null,
+        nota_cancelada: !!n?.cancelada,
+        parceiro_razao: n?.prestador_razao ?? null,
+        parceiro_cnpj: n?.prestador_cnpj ?? null,
+      };
+    });
+    setItens(merged);
+  }, [id]);
+
+  const handleSegregar = useCallback(async (notaId: string) => {
+    setSegregandoId(notaId);
+    const { data, error } = await supabase.rpc("segregar_nota", { _nota_id: notaId });
+    setSegregandoId(null);
+    if (error) {
+      toast.error("Falha ao segregar", { description: error.message });
+      return;
+    }
+    await refetchNotasEItens();
+    toast.success("Linha segregada criada");
+    const novoId = (data as any)?.id;
+    if (novoId) {
+      setTimeout(() => {
+        const el = document.querySelector(`[data-nota-id="${novoId}"]`);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          el.classList.add("ring-2", "ring-brand", "ring-offset-2");
+          setTimeout(() => el.classList.remove("ring-2", "ring-brand", "ring-offset-2"), 2000);
+        }
+      }, 200);
+    }
+  }, [refetchNotasEItens]);
+
+  const handleRemoverSegregacao = useCallback(async (notaId: string) => {
+    const { error } = await supabase.rpc("remover_segregacao", { _nota_id: notaId });
+    if (error) {
+      toast.error("Falha ao remover", { description: error.message });
+      return;
+    }
+    await refetchNotasEItens();
+    toast.success("Linha segregada removida");
+  }, [refetchNotasEItens]);
 
   const aplicarAcumuladorIds = async (itemIds: string[], acumuladorId: string | null, isBulk: boolean) => {
     if (readOnly || itemIds.length === 0) return;
@@ -971,6 +1085,10 @@ export default function ClassificacaoNFe() {
             pisca={pisca}
             readOnly={readOnly}
             tipoIsSaida={competencia.tipo === "nfe_saida"}
+            permitirSegregar={competencia.tipo === "documento_avulso"}
+            segregandoId={segregandoId}
+            onSegregar={handleSegregar}
+            onRemoverSegregacao={handleRemoverSegregacao}
             onAplicarItem={(itemId, aid) => aplicarAcumuladorIds([itemId], aid, false)}
             onAbrirDrawer={(notaId) => setDrawerNotaId(notaId)}
           />
@@ -1183,6 +1301,7 @@ type GrupoNotaRender = {
 
 function PorNotaList({
   grupos, acumuladores, acumMap, pisca, readOnly, tipoIsSaida,
+  permitirSegregar, segregandoId, onSegregar, onRemoverSegregacao,
   onAplicarItem, onAbrirDrawer,
 }: {
   grupos: GrupoNotaRender[];
@@ -1191,6 +1310,10 @@ function PorNotaList({
   pisca: Set<string>;
   readOnly: boolean;
   tipoIsSaida: boolean;
+  permitirSegregar: boolean;
+  segregandoId: string | null;
+  onSegregar: (notaId: string) => void;
+  onRemoverSegregacao: (notaId: string) => void;
   onAplicarItem: (itemId: string, acumuladorId: string | null) => void;
   onAbrirDrawer: (notaId: string) => void;
 }) {
@@ -1203,21 +1326,17 @@ function PorNotaList({
     overscan: 6,
   });
 
+  const cardProps = {
+    acumuladores, acumMap, pisca, readOnly, tipoIsSaida,
+    permitirSegregar, segregandoId, onSegregar, onRemoverSegregacao,
+    onAplicarItem, onAbrirDrawer,
+  };
+
   if (!useVirtual) {
     return (
       <div className="space-y-3">
         {grupos.map((g) => (
-          <NotaCard
-            key={g.notaId}
-            grupo={g}
-            acumuladores={acumuladores}
-            acumMap={acumMap}
-            pisca={pisca}
-            readOnly={readOnly}
-            tipoIsSaida={tipoIsSaida}
-            onAplicarItem={onAplicarItem}
-            onAbrirDrawer={onAbrirDrawer}
-          />
+          <NotaCard key={g.notaId} grupo={g} {...cardProps} />
         ))}
       </div>
     );
@@ -1242,16 +1361,7 @@ function PorNotaList({
                 paddingBottom: 12,
               }}
             >
-              <NotaCard
-                grupo={g}
-                acumuladores={acumuladores}
-                acumMap={acumMap}
-                pisca={pisca}
-                readOnly={readOnly}
-                tipoIsSaida={tipoIsSaida}
-                onAplicarItem={onAplicarItem}
-                onAbrirDrawer={onAbrirDrawer}
-              />
+              <NotaCard grupo={g} {...cardProps} />
             </div>
           );
         })}
@@ -1262,6 +1372,7 @@ function PorNotaList({
 
 function NotaCard({
   grupo, acumuladores, acumMap, pisca, readOnly, tipoIsSaida,
+  permitirSegregar, segregandoId, onSegregar, onRemoverSegregacao,
   onAplicarItem, onAbrirDrawer,
 }: {
   grupo: GrupoNotaRender;
@@ -1270,6 +1381,10 @@ function NotaCard({
   pisca: Set<string>;
   readOnly: boolean;
   tipoIsSaida: boolean;
+  permitirSegregar: boolean;
+  segregandoId: string | null;
+  onSegregar: (notaId: string) => void;
+  onRemoverSegregacao: (notaId: string) => void;
   onAplicarItem: (itemId: string, acumuladorId: string | null) => void;
   onAbrirDrawer: (notaId: string) => void;
 }) {
@@ -1279,9 +1394,12 @@ function NotaCard({
   const pctNota = total > 0 ? (classificados / total) * 100 : 0;
   const TipoIcon = tipoIsSaida ? ArrowUpFromLine : ArrowDownToLine;
   const tipoLabel = tipoIsSaida ? "Saída" : "Entrada";
+  const isSegregada = !!info.raw_data?.segregada_de;
+  const indiceSeg = info.raw_data?.segregacao_indice;
+  const isSegregando = segregandoId === grupo.notaId;
 
   return (
-    <Card data-nota-id={grupo.notaId} className={`rounded-xl overflow-hidden ${cancelada ? "opacity-70" : ""}`}>
+    <Card data-nota-id={grupo.notaId} className={`rounded-xl overflow-hidden ${cancelada ? "opacity-70" : ""} ${isSegregada ? "ml-6 border-l-4 border-l-brand/40" : ""}`}>
       <div
         className="flex items-center gap-4 p-4 hover:bg-muted/30 cursor-pointer transition-colors"
         onClick={() => setAberto((v) => !v)}
@@ -1307,6 +1425,11 @@ function NotaCard({
           <div className={`font-mono text-sm font-semibold tabular-nums ${cancelada ? "line-through" : ""}`}>
             NF-e {info.numero_nfe ?? "—"}
           </div>
+          {isSegregada && indiceSeg != null && (
+            <Badge variant="outline" className="text-[10px] font-normal">
+              seg. {indiceSeg}
+            </Badge>
+          )}
           <div className={`text-xs text-muted-foreground tabular-nums ${cancelada ? "line-through" : ""}`}>
             {formatDateBR(info.emissao_nfe)}
           </div>
@@ -1337,7 +1460,40 @@ function NotaCard({
           )}
         </div>
 
-        <div onClick={(e) => e.stopPropagation()}>
+        <div onClick={(e) => e.stopPropagation()} className="flex items-center gap-1">
+          {permitirSegregar && !readOnly && !cancelada && (
+            isSegregada ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-destructive hover:text-destructive"
+                    onClick={() => onRemoverSegregacao(grupo.notaId)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Remover linha segregada</TooltipContent>
+              </Tooltip>
+            ) : (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    disabled={isSegregando}
+                    onClick={() => onSegregar(grupo.notaId)}
+                  >
+                    {isSegregando
+                      ? <Loader2 className="h-4 w-4 animate-spin" />
+                      : <Plus className="h-4 w-4" />}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Segregar em nova linha</TooltipContent>
+              </Tooltip>
+            )
+          )}
           <Button
             variant="ghost"
             size="sm"

@@ -38,7 +38,7 @@ import {
 import { toast } from "sonner";
 import {
   ArrowDown, ArrowLeft, ArrowUp, Check, CheckCircle2, ChevronLeft, ChevronRight, ChevronsUpDown,
-  Download, History, Loader2, MoreHorizontal, Search, Trash2, Undo2, X,
+  Download, History, Loader2, MoreHorizontal, Plus, Search, Trash2, Undo2, X,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -205,6 +205,7 @@ export default function ClassificacaoNFSe() {
   const [reenriquecendo, setReenriquecendo] = useState(false);
   const [excluirOpen, setExcluirOpen] = useState(false);
   const [historicoOpen, setHistoricoOpen] = useState(false);
+  const [segregandoId, setSegregandoId] = useState<string | null>(null);
 
   // Debounce busca
   useEffect(() => {
@@ -321,7 +322,7 @@ export default function ClassificacaoNFSe() {
     });
   }, [notas, busca, filtro, mostrarCanceladas]);
 
-  // Ordenação aplicada antes da paginação
+  // Ordenação + agrupamento por segregação (segregadas ficam logo abaixo da original)
   const filtradasOrdenadas = useMemo(() => {
     const sortFn = (a: Nota, b: Nota) => {
       let cmp = 0;
@@ -336,7 +337,30 @@ export default function ClassificacaoNFSe() {
       }
       return ordemDir === "asc" ? cmp : -cmp;
     };
-    return [...filtradas].sort(sortFn);
+    const originais = filtradas.filter((n) => !n.raw_data?.segregada_de).sort(sortFn);
+    const segByParent = new Map<string, Nota[]>();
+    filtradas
+      .filter((n) => n.raw_data?.segregada_de)
+      .forEach((n) => {
+        const p = String(n.raw_data.segregada_de);
+        if (!segByParent.has(p)) segByParent.set(p, []);
+        segByParent.get(p)!.push(n);
+      });
+    segByParent.forEach((arr) =>
+      arr.sort(
+        (a, b) => (a.raw_data?.segregacao_indice ?? 0) - (b.raw_data?.segregacao_indice ?? 0),
+      ),
+    );
+    const out: Nota[] = [];
+    originais.forEach((o) => {
+      out.push(o);
+      (segByParent.get(o.id) ?? []).forEach((s) => out.push(s));
+    });
+    // órfãs (pai fora do filtro): mostra no final
+    segByParent.forEach((arr, pid) => {
+      if (!originais.find((o) => o.id === pid)) arr.forEach((s) => out.push(s));
+    });
+    return out;
   }, [filtradas, ordemCampo, ordemDir]);
 
   // Reset página se ficar fora do range
@@ -435,6 +459,53 @@ export default function ClassificacaoNFSe() {
     );
     persistAcumulador([notaId], acumuladorId, snapshot);
   };
+
+  const refetchNotas = useCallback(async () => {
+    if (!id) return;
+    const { data, error } = await supabase
+      .from("notas_fiscais")
+      .select("id, numero_nfe, emissao_nfe, data_competencia, prestador_razao, prestador_cnpj, prestador_municipio, prestador_uf, prestador_endereco, cnae_descricao, servico_municipal, valor_nfe, desconto, valor_contabil, observacao, cancelada, acumulador_id, raw_data")
+      .eq("competencia_id", id)
+      .order("emissao_nfe", { ascending: true });
+    if (error) {
+      toast.error("Algo precisa de atenção", { description: error.message });
+      return;
+    }
+    setNotas((data ?? []) as Nota[]);
+  }, [id]);
+
+  const handleSegregar = useCallback(async (notaId: string) => {
+    setSegregandoId(notaId);
+    const { data, error } = await supabase.rpc("segregar_nota", { _nota_id: notaId });
+    setSegregandoId(null);
+    if (error) {
+      toast.error("Falha ao segregar", { description: error.message });
+      return;
+    }
+    await refetchNotas();
+    toast.success("Linha segregada criada");
+    const novoId = (data as any)?.id;
+    if (novoId) {
+      setTimeout(() => {
+        const el = document.querySelector(`[data-nota-id="${novoId}"]`);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          el.classList.add("ring-2", "ring-brand", "ring-offset-2");
+          setTimeout(() => el.classList.remove("ring-2", "ring-brand", "ring-offset-2"), 2000);
+        }
+      }, 200);
+    }
+  }, [refetchNotas]);
+
+  const handleRemoverSegregacao = useCallback(async (notaId: string) => {
+    const { error } = await supabase.rpc("remover_segregacao", { _nota_id: notaId });
+    if (error) {
+      toast.error("Falha ao remover", { description: error.message });
+      return;
+    }
+    await refetchNotas();
+    toast.success("Linha segregada removida");
+  }, [refetchNotas]);
 
   const aplicarAcumuladorBulk = async (acumuladorId: string) => {
     if (readOnly) return;
@@ -1009,11 +1080,14 @@ export default function ClassificacaoNFSe() {
                     </div>
                   </TableHead>
                   <TableHead className="w-[300px]">Acumulador</TableHead>
+                  <TableHead className="w-12" />
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {pageItems.map((n) => {
                   const isPiscando = pisca.has(n.id);
+                  const isSegregada = !!n.raw_data?.segregada_de;
+                  const indiceSeg = n.raw_data?.segregacao_indice;
                   return (
                     <motion.tr
                       key={n.id}
@@ -1026,7 +1100,7 @@ export default function ClassificacaoNFSe() {
                       transition={{ duration: 0.6, ease: "easeOut" }}
                       className={`border-b last:border-b-0 transition-colors hover:bg-muted/40 cursor-pointer ${
                         n.cancelada ? "opacity-60" : ""
-                      }`}
+                      } ${isSegregada ? "bg-muted/20" : ""}`}
                       onClick={(e) => {
                         const target = e.target as HTMLElement;
                         if (target.closest("[data-no-row-click]")) return;
@@ -1034,7 +1108,7 @@ export default function ClassificacaoNFSe() {
                       }}
                     >
                       <TableCell data-no-row-click onClick={(e) => e.stopPropagation()}>
-                        {!n.cancelada && (
+                        {!n.cancelada && !isSegregada && (
                           <Checkbox
                             checked={selecionadas.has(n.id)}
                             onCheckedChange={() => toggleOne(n.id)}
@@ -1043,7 +1117,17 @@ export default function ClassificacaoNFSe() {
                           />
                         )}
                       </TableCell>
-                      <TableCell className="font-medium tabular-nums">{n.numero_nfe ?? "—"}</TableCell>
+                      <TableCell className="font-medium tabular-nums">
+                        {isSegregada && (
+                          <span className="text-muted-foreground mr-1">↳</span>
+                        )}
+                        {n.numero_nfe ?? "—"}
+                        {isSegregada && indiceSeg != null && (
+                          <Badge variant="outline" className="ml-2 text-[10px] font-normal">
+                            seg. {indiceSeg}
+                          </Badge>
+                        )}
+                      </TableCell>
                       <TableCell className="tabular-nums whitespace-nowrap">{formatDateBR(n.emissao_nfe)}</TableCell>
                       <TableCell className="max-w-[260px]">
                         <span className="truncate block">{n.prestador_razao ?? "—"}</span>
@@ -1068,6 +1152,41 @@ export default function ClassificacaoNFSe() {
                             disabled={readOnly}
                             onChange={(aid) => aplicarAcumulador(n.id, aid)}
                           />
+                        )}
+                      </TableCell>
+                      <TableCell data-no-row-click onClick={(e) => e.stopPropagation()} className="p-2">
+                        {!readOnly && !n.cancelada && (
+                          isSegregada ? (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="text-destructive hover:text-destructive"
+                                  onClick={() => handleRemoverSegregacao(n.id)}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Remover linha segregada</TooltipContent>
+                            </Tooltip>
+                          ) : (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  disabled={segregandoId === n.id}
+                                  onClick={() => handleSegregar(n.id)}
+                                >
+                                  {segregandoId === n.id
+                                    ? <Loader2 className="h-4 w-4 animate-spin" />
+                                    : <Plus className="h-4 w-4" />}
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Segregar em nova linha</TooltipContent>
+                            </Tooltip>
+                          )
                         )}
                       </TableCell>
                     </motion.tr>
