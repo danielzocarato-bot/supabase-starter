@@ -66,15 +66,20 @@ export const AppShell = ({ children }: { children: ReactNode }) => {
   return (
     <div className="min-h-screen flex w-full bg-background">
       {/* Sidebar */}
-      <aside className="w-[260px] flex-shrink-0 bg-card border-r border-border flex flex-col">
-        <div className="h-16 px-5 flex items-center border-b border-border">
-          <AcruxLogo />
+      <aside className="w-[260px] flex-shrink-0 bg-sidebar text-sidebar-foreground border-r border-sidebar-border flex flex-col">
+        <div className="h-16 px-5 flex items-center gap-2 border-b border-sidebar-border">
+          <div className="w-7 h-7 rounded-md bg-gradient-gold flex items-center justify-center shadow-brand">
+            <FileScan className="h-4 w-4 text-brand-navy" strokeWidth={2} />
+          </div>
+          <span className="font-display font-semibold text-brand-gold text-sm tracking-wide">
+            FLOW CLASSIFICA
+          </span>
         </div>
 
         <nav className="flex-1 p-3 space-y-5 overflow-y-auto">
           {items.map((section) => (
             <div key={section.label}>
-              <p className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <p className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/60">
                 {section.label}
               </p>
               <div className="space-y-0.5">
@@ -90,16 +95,13 @@ export const AppShell = ({ children }: { children: ReactNode }) => {
                         const isAct = isActive || active;
                         return `relative flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
                           isAct
-                            ? "bg-brand-soft text-brand"
-                            : "text-foreground/80 hover:bg-muted hover:text-foreground hover:translate-x-0.5"
+                            ? "bg-sidebar-accent text-sidebar-accent-foreground border-l-2 border-brand-gold"
+                            : "text-sidebar-foreground/85 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground hover:translate-x-0.5"
                         }`;
                       }}
                     >
                       {({ isActive }) => (
                         <>
-                          {(isActive || active) && (
-                            <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-r bg-brand" />
-                          )}
                           <Icon className="h-[18px] w-[18px]" strokeWidth={1.5} />
                           <span>{item.label}</span>
                         </>
@@ -112,7 +114,7 @@ export const AppShell = ({ children }: { children: ReactNode }) => {
           ))}
         </nav>
 
-        <div className="p-3 border-t border-border space-y-2">
+        <div className="p-3 border-t border-sidebar-border space-y-2">
           <div className="px-3 py-2">
             <p className="text-sm font-medium truncate">{profile?.nome || profile?.email}</p>
             <p className="text-xs text-muted-foreground capitalize">{profile?.role}</p>
