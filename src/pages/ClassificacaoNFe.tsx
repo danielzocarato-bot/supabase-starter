@@ -249,6 +249,7 @@ export default function ClassificacaoNFe() {
       (notasRes.data ?? []).forEach((n: any) => {
         notasMap.set(n.id, {
           id: n.id,
+          id_externo: n.id_externo,
           numero_nfe: n.numero_nfe,
           chave_nfe: n.chave_nfe,
           emissao_nfe: n.emissao_nfe,
