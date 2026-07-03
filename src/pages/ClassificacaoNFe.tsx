@@ -1301,6 +1301,7 @@ type GrupoNotaRender = {
 
 function PorNotaList({
   grupos, acumuladores, acumMap, pisca, readOnly, tipoIsSaida,
+  permitirSegregar, segregandoId, onSegregar, onRemoverSegregacao,
   onAplicarItem, onAbrirDrawer,
 }: {
   grupos: GrupoNotaRender[];
@@ -1309,6 +1310,10 @@ function PorNotaList({
   pisca: Set<string>;
   readOnly: boolean;
   tipoIsSaida: boolean;
+  permitirSegregar: boolean;
+  segregandoId: string | null;
+  onSegregar: (notaId: string) => void;
+  onRemoverSegregacao: (notaId: string) => void;
   onAplicarItem: (itemId: string, acumuladorId: string | null) => void;
   onAbrirDrawer: (notaId: string) => void;
 }) {
@@ -1321,21 +1326,17 @@ function PorNotaList({
     overscan: 6,
   });
 
+  const cardProps = {
+    acumuladores, acumMap, pisca, readOnly, tipoIsSaida,
+    permitirSegregar, segregandoId, onSegregar, onRemoverSegregacao,
+    onAplicarItem, onAbrirDrawer,
+  };
+
   if (!useVirtual) {
     return (
       <div className="space-y-3">
         {grupos.map((g) => (
-          <NotaCard
-            key={g.notaId}
-            grupo={g}
-            acumuladores={acumuladores}
-            acumMap={acumMap}
-            pisca={pisca}
-            readOnly={readOnly}
-            tipoIsSaida={tipoIsSaida}
-            onAplicarItem={onAplicarItem}
-            onAbrirDrawer={onAbrirDrawer}
-          />
+          <NotaCard key={g.notaId} grupo={g} {...cardProps} />
         ))}
       </div>
     );
@@ -1360,16 +1361,7 @@ function PorNotaList({
                 paddingBottom: 12,
               }}
             >
-              <NotaCard
-                grupo={g}
-                acumuladores={acumuladores}
-                acumMap={acumMap}
-                pisca={pisca}
-                readOnly={readOnly}
-                tipoIsSaida={tipoIsSaida}
-                onAplicarItem={onAplicarItem}
-                onAbrirDrawer={onAbrirDrawer}
-              />
+              <NotaCard grupo={g} {...cardProps} />
             </div>
           );
         })}
