@@ -31,7 +31,7 @@ import {
 import { toast } from "sonner";
 import {
   ArrowLeft, ArrowDownToLine, ArrowUpFromLine, CheckCircle2, ChevronDown,
-  ChevronRight, ChevronsUpDown, Download, Eye, History, Layers, List, Loader2, MoreHorizontal, Search, Trash2, Undo2,
+  ChevronRight, ChevronsUpDown, Download, Eye, History, Layers, List, Loader2, MoreHorizontal, Plus, Search, Trash2, Undo2, X,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
