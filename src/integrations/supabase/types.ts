@@ -715,6 +715,48 @@ export type Database = {
           read_ct: number
         }[]
       }
+      remover_segregacao: { Args: { _nota_id: string }; Returns: undefined }
+      segregar_nota: {
+        Args: { _nota_id: string }
+        Returns: {
+          acumulador_id: string | null
+          cancelada: boolean
+          categoria_doc: string | null
+          chave_nfe: string | null
+          classificado_em: string | null
+          classificado_por: string | null
+          cnae_descricao: string | null
+          competencia_id: string
+          created_at: string
+          data_competencia: string | null
+          data_vencimento: string | null
+          desconto: number
+          emissao_nfe: string | null
+          id: string
+          id_externo: string
+          numero_nfe: string | null
+          observacao: string | null
+          prestador_cnpj: string | null
+          prestador_endereco: string | null
+          prestador_municipio: string | null
+          prestador_municipio_ibge: string | null
+          prestador_razao: string | null
+          prestador_uf: string | null
+          raw_data: Json | null
+          servico_municipal: string | null
+          tipo_documento: string | null
+          tipo_operacao_nfe: string | null
+          updated_at: string
+          valor_contabil: number | null
+          valor_nfe: number | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "notas_fiscais"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       usuarios_com_status: {
         Args: never
         Returns: {
