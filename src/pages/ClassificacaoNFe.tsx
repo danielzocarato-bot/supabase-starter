@@ -218,7 +218,7 @@ export default function ClassificacaoNFe() {
 
       const notasReq = supabase
         .from("notas_fiscais")
-        .select("id, numero_nfe, chave_nfe, emissao_nfe, valor_nfe, cancelada, observacao, tipo_operacao_nfe, prestador_razao, prestador_cnpj, raw_data")
+        .select("id, id_externo, numero_nfe, chave_nfe, emissao_nfe, valor_nfe, cancelada, observacao, tipo_operacao_nfe, prestador_razao, prestador_cnpj, raw_data")
         .eq("competencia_id", id);
 
       const [compRes, notasRes] = await Promise.all([compReq, notasReq]);
