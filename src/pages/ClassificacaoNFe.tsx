@@ -1085,6 +1085,10 @@ export default function ClassificacaoNFe() {
             pisca={pisca}
             readOnly={readOnly}
             tipoIsSaida={competencia.tipo === "nfe_saida"}
+            permitirSegregar={competencia.tipo === "documento_avulso"}
+            segregandoId={segregandoId}
+            onSegregar={handleSegregar}
+            onRemoverSegregacao={handleRemoverSegregacao}
             onAplicarItem={(itemId, aid) => aplicarAcumuladorIds([itemId], aid, false)}
             onAbrirDrawer={(notaId) => setDrawerNotaId(notaId)}
           />
