@@ -514,6 +514,107 @@ export default function ClassificacaoNFe() {
     [profile?.id],
   );
 
+  const [segregandoId, setSegregandoId] = useState<string | null>(null);
+
+  const refetchNotasEItens = useCallback(async () => {
+    if (!id) return;
+    const { data: notasRes, error: nErr } = await supabase
+      .from("notas_fiscais")
+      .select("id, id_externo, numero_nfe, chave_nfe, emissao_nfe, valor_nfe, cancelada, observacao, tipo_operacao_nfe, prestador_razao, prestador_cnpj, raw_data")
+      .eq("competencia_id", id);
+    if (nErr) {
+      toast.error("Algo precisa de atenção", { description: nErr.message });
+      return;
+    }
+    const nMap = new Map<string, NotaInfo>();
+    (notasRes ?? []).forEach((n: any) => {
+      nMap.set(n.id, {
+        id: n.id,
+        id_externo: n.id_externo,
+        numero_nfe: n.numero_nfe,
+        chave_nfe: n.chave_nfe,
+        emissao_nfe: n.emissao_nfe,
+        valor_nfe: n.valor_nfe == null ? null : Number(n.valor_nfe),
+        cancelada: !!n.cancelada,
+        observacao: n.observacao,
+        tipo_operacao_nfe: n.tipo_operacao_nfe,
+        prestador_razao: n.prestador_razao,
+        prestador_cnpj: n.prestador_cnpj,
+        raw_data: n.raw_data,
+      });
+    });
+    setNotasMapState(nMap);
+    const notaIds = Array.from(nMap.keys());
+    if (notaIds.length === 0) {
+      setItens([]);
+      return;
+    }
+    const { data: itensRes, error: iErr } = await supabase
+      .from("notas_fiscais_itens")
+      .select("id, nota_id, numero_item, codigo_produto, descricao_produto, ncm, cfop, valor, acumulador_id")
+      .in("nota_id", notaIds)
+      .order("nota_id", { ascending: true })
+      .order("numero_item", { ascending: true });
+    if (iErr) {
+      toast.error("Algo precisa de atenção", { description: iErr.message });
+      return;
+    }
+    const merged: ItemNFe[] = (itensRes ?? []).map((i: any) => {
+      const n = nMap.get(i.nota_id);
+      return {
+        id: i.id,
+        nota_id: i.nota_id,
+        numero_item: i.numero_item,
+        codigo_produto: i.codigo_produto,
+        descricao_produto: i.descricao_produto,
+        ncm: i.ncm,
+        cfop: i.cfop,
+        valor: i.valor == null ? null : Number(i.valor),
+        acumulador_id: i.acumulador_id,
+        nota_numero: n?.numero_nfe ?? null,
+        nota_chave: n?.chave_nfe ?? null,
+        nota_emissao: n?.emissao_nfe ?? null,
+        nota_cancelada: !!n?.cancelada,
+        parceiro_razao: n?.prestador_razao ?? null,
+        parceiro_cnpj: n?.prestador_cnpj ?? null,
+      };
+    });
+    setItens(merged);
+  }, [id]);
+
+  const handleSegregar = useCallback(async (notaId: string) => {
+    setSegregandoId(notaId);
+    const { data, error } = await supabase.rpc("segregar_nota", { _nota_id: notaId });
+    setSegregandoId(null);
+    if (error) {
+      toast.error("Falha ao segregar", { description: error.message });
+      return;
+    }
+    await refetchNotasEItens();
+    toast.success("Linha segregada criada");
+    const novoId = (data as any)?.id;
+    if (novoId) {
+      setTimeout(() => {
+        const el = document.querySelector(`[data-nota-id="${novoId}"]`);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          el.classList.add("ring-2", "ring-brand", "ring-offset-2");
+          setTimeout(() => el.classList.remove("ring-2", "ring-brand", "ring-offset-2"), 2000);
+        }
+      }, 200);
+    }
+  }, [refetchNotasEItens]);
+
+  const handleRemoverSegregacao = useCallback(async (notaId: string) => {
+    const { error } = await supabase.rpc("remover_segregacao", { _nota_id: notaId });
+    if (error) {
+      toast.error("Falha ao remover", { description: error.message });
+      return;
+    }
+    await refetchNotasEItens();
+    toast.success("Linha segregada removida");
+  }, [refetchNotasEItens]);
+
   const aplicarAcumuladorIds = async (itemIds: string[], acumuladorId: string | null, isBulk: boolean) => {
     if (readOnly || itemIds.length === 0) return;
     const snapshot = itens;
