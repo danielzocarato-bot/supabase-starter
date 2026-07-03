@@ -1080,11 +1080,14 @@ export default function ClassificacaoNFSe() {
                     </div>
                   </TableHead>
                   <TableHead className="w-[300px]">Acumulador</TableHead>
+                  <TableHead className="w-12" />
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {pageItems.map((n) => {
                   const isPiscando = pisca.has(n.id);
+                  const isSegregada = !!n.raw_data?.segregada_de;
+                  const indiceSeg = n.raw_data?.segregacao_indice;
                   return (
                     <motion.tr
                       key={n.id}
@@ -1097,7 +1100,7 @@ export default function ClassificacaoNFSe() {
                       transition={{ duration: 0.6, ease: "easeOut" }}
                       className={`border-b last:border-b-0 transition-colors hover:bg-muted/40 cursor-pointer ${
                         n.cancelada ? "opacity-60" : ""
-                      }`}
+                      } ${isSegregada ? "bg-muted/20" : ""}`}
                       onClick={(e) => {
                         const target = e.target as HTMLElement;
                         if (target.closest("[data-no-row-click]")) return;
@@ -1105,7 +1108,7 @@ export default function ClassificacaoNFSe() {
                       }}
                     >
                       <TableCell data-no-row-click onClick={(e) => e.stopPropagation()}>
-                        {!n.cancelada && (
+                        {!n.cancelada && !isSegregada && (
                           <Checkbox
                             checked={selecionadas.has(n.id)}
                             onCheckedChange={() => toggleOne(n.id)}
@@ -1114,7 +1117,17 @@ export default function ClassificacaoNFSe() {
                           />
                         )}
                       </TableCell>
-                      <TableCell className="font-medium tabular-nums">{n.numero_nfe ?? "—"}</TableCell>
+                      <TableCell className="font-medium tabular-nums">
+                        {isSegregada && (
+                          <span className="text-muted-foreground mr-1">↳</span>
+                        )}
+                        {n.numero_nfe ?? "—"}
+                        {isSegregada && indiceSeg != null && (
+                          <Badge variant="outline" className="ml-2 text-[10px] font-normal">
+                            seg. {indiceSeg}
+                          </Badge>
+                        )}
+                      </TableCell>
                       <TableCell className="tabular-nums whitespace-nowrap">{formatDateBR(n.emissao_nfe)}</TableCell>
                       <TableCell className="max-w-[260px]">
                         <span className="truncate block">{n.prestador_razao ?? "—"}</span>
@@ -1139,6 +1152,41 @@ export default function ClassificacaoNFSe() {
                             disabled={readOnly}
                             onChange={(aid) => aplicarAcumulador(n.id, aid)}
                           />
+                        )}
+                      </TableCell>
+                      <TableCell data-no-row-click onClick={(e) => e.stopPropagation()} className="p-2">
+                        {!readOnly && !n.cancelada && (
+                          isSegregada ? (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="text-destructive hover:text-destructive"
+                                  onClick={() => handleRemoverSegregacao(n.id)}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Remover linha segregada</TooltipContent>
+                            </Tooltip>
+                          ) : (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  disabled={segregandoId === n.id}
+                                  onClick={() => handleSegregar(n.id)}
+                                >
+                                  {segregandoId === n.id
+                                    ? <Loader2 className="h-4 w-4 animate-spin" />
+                                    : <Plus className="h-4 w-4" />}
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Segregar em nova linha</TooltipContent>
+                            </Tooltip>
+                          )
                         )}
                       </TableCell>
                     </motion.tr>
