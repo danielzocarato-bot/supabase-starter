@@ -460,6 +460,53 @@ export default function ClassificacaoNFSe() {
     persistAcumulador([notaId], acumuladorId, snapshot);
   };
 
+  const refetchNotas = useCallback(async () => {
+    if (!id) return;
+    const { data, error } = await supabase
+      .from("notas_fiscais")
+      .select("id, numero_nfe, emissao_nfe, data_competencia, prestador_razao, prestador_cnpj, prestador_municipio, prestador_uf, prestador_endereco, cnae_descricao, servico_municipal, valor_nfe, desconto, valor_contabil, observacao, cancelada, acumulador_id, raw_data")
+      .eq("competencia_id", id)
+      .order("emissao_nfe", { ascending: true });
+    if (error) {
+      toast.error("Algo precisa de atenção", { description: error.message });
+      return;
+    }
+    setNotas((data ?? []) as Nota[]);
+  }, [id]);
+
+  const handleSegregar = useCallback(async (notaId: string) => {
+    setSegregandoId(notaId);
+    const { data, error } = await supabase.rpc("segregar_nota", { _nota_id: notaId });
+    setSegregandoId(null);
+    if (error) {
+      toast.error("Falha ao segregar", { description: error.message });
+      return;
+    }
+    await refetchNotas();
+    toast.success("Linha segregada criada");
+    const novoId = (data as any)?.id;
+    if (novoId) {
+      setTimeout(() => {
+        const el = document.querySelector(`[data-nota-id="${novoId}"]`);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          el.classList.add("ring-2", "ring-brand", "ring-offset-2");
+          setTimeout(() => el.classList.remove("ring-2", "ring-brand", "ring-offset-2"), 2000);
+        }
+      }, 200);
+    }
+  }, [refetchNotas]);
+
+  const handleRemoverSegregacao = useCallback(async (notaId: string) => {
+    const { error } = await supabase.rpc("remover_segregacao", { _nota_id: notaId });
+    if (error) {
+      toast.error("Falha ao remover", { description: error.message });
+      return;
+    }
+    await refetchNotas();
+    toast.success("Linha segregada removida");
+  }, [refetchNotas]);
+
   const aplicarAcumuladorBulk = async (acumuladorId: string) => {
     if (readOnly) return;
     const ids = Array.from(selecionadas);
