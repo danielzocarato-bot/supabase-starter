@@ -321,7 +321,7 @@ export default function ClassificacaoNFSe() {
     });
   }, [notas, busca, filtro, mostrarCanceladas]);
 
-  // Ordenação aplicada antes da paginação
+  // Ordenação + agrupamento por segregação (segregadas ficam logo abaixo da original)
   const filtradasOrdenadas = useMemo(() => {
     const sortFn = (a: Nota, b: Nota) => {
       let cmp = 0;
@@ -336,7 +336,30 @@ export default function ClassificacaoNFSe() {
       }
       return ordemDir === "asc" ? cmp : -cmp;
     };
-    return [...filtradas].sort(sortFn);
+    const originais = filtradas.filter((n) => !n.raw_data?.segregada_de).sort(sortFn);
+    const segByParent = new Map<string, Nota[]>();
+    filtradas
+      .filter((n) => n.raw_data?.segregada_de)
+      .forEach((n) => {
+        const p = String(n.raw_data.segregada_de);
+        if (!segByParent.has(p)) segByParent.set(p, []);
+        segByParent.get(p)!.push(n);
+      });
+    segByParent.forEach((arr) =>
+      arr.sort(
+        (a, b) => (a.raw_data?.segregacao_indice ?? 0) - (b.raw_data?.segregacao_indice ?? 0),
+      ),
+    );
+    const out: Nota[] = [];
+    originais.forEach((o) => {
+      out.push(o);
+      (segByParent.get(o.id) ?? []).forEach((s) => out.push(s));
+    });
+    // órfãs (pai fora do filtro): mostra no final
+    segByParent.forEach((arr, pid) => {
+      if (!originais.find((o) => o.id === pid)) arr.forEach((s) => out.push(s));
+    });
+    return out;
   }, [filtradas, ordemCampo, ordemDir]);
 
   // Reset página se ficar fora do range
