@@ -140,7 +140,7 @@ export default function Unsubscribe() {
           )}
 
           <p className="text-xs text-muted-foreground mt-4">
-            Acrux Contabilidade · uma forma mais inteligente de classificar suas notas
+            FLOW CLASSIFICA · uma forma mais inteligente de classificar suas notas
           </p>
         </div>
       </Card>
