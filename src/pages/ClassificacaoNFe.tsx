@@ -102,6 +102,7 @@ type Acumulador = {
 
 type NotaInfo = {
   id: string;
+  id_externo: string | null;
   numero_nfe: string | null;
   chave_nfe: string | null;
   emissao_nfe: string | null;
