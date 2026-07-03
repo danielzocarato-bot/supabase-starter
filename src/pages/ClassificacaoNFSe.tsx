@@ -205,6 +205,7 @@ export default function ClassificacaoNFSe() {
   const [reenriquecendo, setReenriquecendo] = useState(false);
   const [excluirOpen, setExcluirOpen] = useState(false);
   const [historicoOpen, setHistoricoOpen] = useState(false);
+  const [segregandoId, setSegregandoId] = useState<string | null>(null);
 
   // Debounce busca
   useEffect(() => {
