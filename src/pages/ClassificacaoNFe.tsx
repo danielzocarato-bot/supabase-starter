@@ -428,11 +428,22 @@ export default function ClassificacaoNFe() {
         total: all.length,
       });
     });
+    const baseIdExterno = (g: GrupoNota) => {
+      const ie = g.info.id_externo ?? "";
+      const idx = ie.indexOf("#SEG-");
+      return idx >= 0 ? ie.slice(0, idx) : ie;
+    };
+    const segIdx = (g: GrupoNota) => Number(g.info.raw_data?.segregacao_indice ?? 0);
     arr.sort((a, b) => {
-      const da = a.info.emissao_nfe ?? "";
-      const db = b.info.emissao_nfe ?? "";
-      if (da !== db) return da.localeCompare(db);
-      return (a.info.numero_nfe ?? "").localeCompare(b.info.numero_nfe ?? "");
+      const ba = baseIdExterno(a);
+      const bb = baseIdExterno(b);
+      if (ba !== bb) {
+        const da = a.info.emissao_nfe ?? "";
+        const db = b.info.emissao_nfe ?? "";
+        if (da !== db) return da.localeCompare(db);
+        return ba.localeCompare(bb);
+      }
+      return segIdx(a) - segIdx(b);
     });
     return arr;
   }, [itens, itensFiltrados, notasMapState]);
